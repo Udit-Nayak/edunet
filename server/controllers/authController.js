@@ -117,7 +117,8 @@ exports.googleAuth = async (req, res) => {
     const { firebaseUser } = req; 
     
     let user = await User.findOne({ firebaseUid: firebaseUser.uid });
-    
+    let isNewUser = false;
+
     if (!user) {
       const existingEmailUser = await User.findOne({ 
         email: firebaseUser.email.toLowerCase() 
@@ -140,7 +141,8 @@ exports.googleAuth = async (req, res) => {
         authProvider: 'google',
         isEmailVerified: firebaseUser.email_verified || false,
       });
-      
+
+      isNewUser = true;
       console.log(`✅ New user registered via Google: ${username}`);
     } else {
       console.log(`✅ User logged in via Google: ${user.username}`);
@@ -148,9 +150,24 @@ exports.googleAuth = async (req, res) => {
     
     user.lastActive = Date.now();
     await user.save();
+    const token = require('../utils/jwt').generateToken(user._id);
+
+const options = {
+      expires: new Date(
+        Date.now() + process.env.JWT_COOKIE_EXPIRE * 24 * 60 * 60 * 1000
+      ),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+    };
     
-    sendTokenResponse(user, 200, res);
-  } catch (error) {
+    res.status(200).cookie('token', token, options).json({
+      success: true,
+      token,
+      user: user.getPublicProfile(),
+      isNewUser, // Include this flag
+    });
+} catch (error) {
     console.error('Google auth error:', error);
     res.status(500).json({
       success: false,
@@ -196,6 +213,118 @@ exports.logout = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Error logging out',
+      error: error.message,
+    });
+  }
+};
+
+// @route   PUT /api/auth/profile
+exports.updateProfile = async (req, res) => {
+  try {
+    const { bio, college, yearOfStudy, interests } = req.body;
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    // Update fields
+    if (bio !== undefined) user.bio = bio;
+    if (college !== undefined) user.college = college;
+    if (yearOfStudy !== undefined) user.yearOfStudy = yearOfStudy;
+    if (interests !== undefined) user.interests = interests;
+
+    await user.save();
+
+    // Clear cache
+    await cacheService.del(`user:${user._id}`);
+
+    res.status(200).json({
+      success: true,
+      user: user.getPublicProfile(),
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating profile',
+      error: error.message,
+    });
+  }
+};
+
+// @desc    Update username
+// @route   PUT /api/auth/username
+// @access  Private
+exports.updateUsername = async (req, res) => {
+  try {
+    const { username } = req.body;
+
+    if (!username) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username is required',
+      });
+    }
+
+    // Validate username format
+    const usernameRegex = /^[a-zA-Z0-9_]+$/;
+    if (!usernameRegex.test(username)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username can only contain letters, numbers, and underscores',
+      });
+    }
+
+    if (username.length < 3 || username.length > 30) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username must be between 3 and 30 characters',
+      });
+    }
+
+    // Check if username is already taken
+    const existingUser = await User.findOne({ 
+      username, 
+      _id: { $ne: req.user._id } // Exclude current user
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username is already taken',
+      });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    user.username = username;
+    await user.save();
+
+    // Clear cache
+    await cacheService.del(`user:${user._id}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'Username updated successfully',
+      user: user.getPublicProfile(),
+    });
+  } catch (error) {
+    console.error('Update username error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error updating username',
       error: error.message,
     });
   }
