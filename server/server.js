@@ -19,11 +19,16 @@ app.use(cors({
   credentials: true, 
 }));
 app.use(morgan('dev')); 
-app.use(express.json()); 
-app.use(express.urlencoded({ extended: true })); 
+app.use(express.json({ limit: '50mb' })); // Increased for base64 images
+app.use(express.urlencoded({ extended: true, limit: '50mb' })); 
 app.use(cookieParser()); 
 
+// Routes
 app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/posts', require('./routes/postRoutes'));
+app.use('/api/answers', require('./routes/answerRoutes'));
+app.use('/api/comments', require('./routes/commentRoutes'));
+
 
 app.get('/health', (req, res) => {
   res.status(200).json({
@@ -42,6 +47,9 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       auth: '/api/auth',
+      posts: '/api/posts',
+      answers: '/api/answers',
+      comments: '/api/comments', 
     },
   });
 });
@@ -71,7 +79,7 @@ const server = app.listen(PORT, () => {
   console.log('');
   console.log('='.repeat(50));
   console.log(`🚀 Server running on port ${PORT}`);
-  console.log(`📝 Environment: ${process.env.NODE_ENV}`);
+  console.log(`🔒 Environment: ${process.env.NODE_ENV}`);
   console.log(`🌐 URL: http://localhost:${PORT}`);
   console.log('='.repeat(50));
   console.log('');

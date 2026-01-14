@@ -28,6 +28,7 @@ exports.protect = async (req, res, next) => {
     let user = await cacheService.get(cacheKey);
     
     if (!user) {
+      // Not in cache, fetch from database
       user = await User.findById(decoded.userId).select('-password');
       
       if (!user) {
@@ -44,10 +45,29 @@ exports.protect = async (req, res, next) => {
         });
       }
       
+      // Store in cache for 5 minutes
       await cacheService.set(cacheKey, user, 300);
+      
+      // Attach Mongoose document to request
+      req.user = user;
+    } else {
+      // User from cache is a plain object
+      // Convert it back to Mongoose document
+      user = await User.findById(user._id).select('-password');
+      
+      if (!user) {
+        // User was deleted after being cached
+        await cacheService.del(cacheKey);
+        return res.status(401).json({
+          success: false,
+          message: 'User not found.',
+        });
+      }
+      
+      // Attach Mongoose document to request
+      req.user = user;
     }
     
-    req.user = user;
     next();
   } catch (error) {
     return res.status(401).json({
@@ -57,7 +77,6 @@ exports.protect = async (req, res, next) => {
     });
   }
 };
-
 exports.verifyFirebaseToken = async (req, res, next) => {
   try {
     const { firebaseToken } = req.body;
