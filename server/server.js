@@ -28,6 +28,8 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/posts', require('./routes/postRoutes'));
 app.use('/api/answers', require('./routes/answerRoutes'));
 app.use('/api/comments', require('./routes/commentRoutes'));
+app.use('/api/upload', require('./routes/uploadRoutes'));
+
 
 
 app.get('/health', (req, res) => {
@@ -50,6 +52,7 @@ app.get('/', (req, res) => {
       posts: '/api/posts',
       answers: '/api/answers',
       comments: '/api/comments', 
+      upload:'/api/upload',
     },
   });
 });

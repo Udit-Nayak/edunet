@@ -1,49 +1,92 @@
-const Post = require('../models/Post');
-const Answer = require('../models/Answer');
-const User = require('../models/User');
-const cacheService = require('../services/cacheService');
+const Post = require("../models/Post");
+const Answer = require("../models/Answer");
+const User = require("../models/User");
+const cacheService = require("../services/cacheService");
+const storageService = require("../services/storageService");
 
 // @route   POST /api/posts
-exports.createPost=async (req, res)=>{
-    try{
-        const {type, title, content, tags, attachments, status}=req.body;
+exports.createPost = async (req, res) => {
+  try {
+    const { type, title, content, tags, attachments, status } = req.body;
 
-        if(!type || !title || !content){
-            return res.status(400).json({
-                success: false,
-                message: 'Type, title and content are required',
-            });
-        }
-
-        const post=await Post.create({
-            type, 
-            title, 
-            content, 
-            authorId:req.user._id,
-            tags:tags||[],
-            attachments:attachments||[],
-            status:status||'published',
-        });
-
-        await post.populate('authorId', 'username avatar reputation');
-
-        await cacheService.delPattern('posts:*');
-
-        res.status(201).json({
-            success:true, 
-            message:'Post created successfully',
-            post:post.getPublicData(),
-        }),
-        console.log(`✅ New ${type} created by ${req.user.username}`);
-    } catch(error){
-        console.error('Created post error:', error);
-        res.status(500).json({
-                  success: false,
-      message: 'Error creating post',
-      error: error.message,
-
-        });
+    if (!type || !title || !content) {
+      return res.status(400).json({
+        success: false,
+        message: "Type, title and content are required",
+      });
     }
+
+    if (attachments && attachments.length > 0) {
+      const supabaseUrl = process.env.SUPABASE_URL;
+
+      const validAttachments = attachments.every((attachment) => {
+        // Check basic structure
+        const hasRequiredFields =
+          attachment.url &&
+          attachment.name &&
+          attachment.type &&
+          ["image", "pdf"].includes(attachment.type);
+
+        // Check if URL is from Supabase (if SUPABASE_URL is set)
+        const isValidUrl = supabaseUrl
+          ? attachment.url.startsWith(
+              `${supabaseUrl}/storage/v1/object/public/`
+            )
+          : attachment.url.includes("supabase.co/storage/v1/object/public/");
+
+        return hasRequiredFields && isValidUrl;
+      });
+
+      if (!validAttachments) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid attachment format or unauthorized storage URL",
+        });
+      }
+
+      // Verify files belong to the user
+      const userId = req.user._id.toString();
+      const userOwnsAllFiles = attachments.every((attachment) => {
+        const filePath = storageService.extractFilePathFromUrl(attachment.url);
+        return filePath && filePath.startsWith(userId);
+      });
+
+      if (!userOwnsAllFiles) {
+        return res.status(403).json({
+          success: false,
+          message: "You can only attach your own uploaded files",
+        });
+      }
+    }
+
+    const post = await Post.create({
+      type,
+      title,
+      content,
+      authorId: req.user._id,
+      tags: tags || [],
+      attachments: attachments || [],
+      status: status || "published",
+    });
+
+    await post.populate("authorId", "username avatar reputation");
+
+    await cacheService.delPattern("posts:*");
+
+    res.status(201).json({
+      success: true,
+      message: "Post created successfully",
+      post: post.getPublicData(),
+    }),
+      console.log(`✅ New ${type} created by ${req.user.username}`);
+  } catch (error) {
+    console.error("Created post error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Error creating post",
+      error: error.message,
+    });
+  }
 };
 
 // @route   GET /api/posts
@@ -57,7 +100,7 @@ exports.getPosts = async (req, res) => {
       search,
       page = 1,
       limit = 10,
-      sortBy = 'recent', // recent, popular, trending
+      sortBy = "recent", // recent, popular, trending
     } = req.query;
 
     // Build query
@@ -67,7 +110,7 @@ exports.getPosts = async (req, res) => {
     if (tag) query.tags = tag;
     if (authorId) query.authorId = authorId;
     if (status) query.status = status;
-    else query.status = 'published'; // Default to published posts
+    else query.status = "published"; // Default to published posts
 
     // Search functionality
     if (search) {
@@ -77,19 +120,21 @@ exports.getPosts = async (req, res) => {
     // Sorting
     let sort = {};
     switch (sortBy) {
-      case 'popular':
+      case "popular":
         sort = { upvotes: -1, createdAt: -1 };
         break;
-      case 'trending':
+      case "trending":
         sort = { viewCount: -1, upvotes: -1, createdAt: -1 };
         break;
-      case 'recent':
+      case "recent":
       default:
         sort = { createdAt: -1 };
     }
 
     // Cache key
-    const cacheKey = `posts:${JSON.stringify(query)}:${sortBy}:${page}:${limit}`;
+    const cacheKey = `posts:${JSON.stringify(
+      query
+    )}:${sortBy}:${page}:${limit}`;
     const cachedData = await cacheService.get(cacheKey);
 
     if (cachedData) {
@@ -103,7 +148,7 @@ exports.getPosts = async (req, res) => {
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('authorId', 'username avatar reputation')
+      .populate("authorId", "username avatar reputation")
       .lean();
 
     const total = await Post.countDocuments(query);
@@ -124,10 +169,10 @@ exports.getPosts = async (req, res) => {
 
     res.status(200).json(response);
   } catch (error) {
-    console.error('Get posts error:', error);
+    console.error("Get posts error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching posts',
+      message: "Error fetching posts",
       error: error.message,
     });
   }
@@ -149,14 +194,14 @@ exports.getPostById = async (req, res) => {
     }
 
     const post = await Post.findById(id).populate(
-      'authorId',
-      'username avatar reputation bio'
+      "authorId",
+      "username avatar reputation bio"
     );
 
     if (!post) {
       return res.status(404).json({
         success: false,
-        message: 'Post not found',
+        message: "Post not found",
       });
     }
 
@@ -174,10 +219,10 @@ exports.getPostById = async (req, res) => {
       post: postData,
     });
   } catch (error) {
-    console.error('Get post by ID error:', error);
+    console.error("Get post by ID error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching post',
+      message: "Error fetching post",
       error: error.message,
     });
   }
@@ -194,7 +239,7 @@ exports.updatePost = async (req, res) => {
     if (!post) {
       return res.status(404).json({
         success: false,
-        message: 'Post not found',
+        message: "Post not found",
       });
     }
 
@@ -202,7 +247,7 @@ exports.updatePost = async (req, res) => {
     if (post.authorId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to update this post',
+        message: "Not authorized to update this post",
       });
     }
 
@@ -217,24 +262,24 @@ exports.updatePost = async (req, res) => {
     post.editedAt = Date.now();
 
     await post.save();
-    await post.populate('authorId', 'username avatar reputation');
+    await post.populate("authorId", "username avatar reputation");
 
     // Clear caches
     await cacheService.del(`post:${id}`);
-    await cacheService.delPattern('posts:*');
+    await cacheService.delPattern("posts:*");
 
     res.status(200).json({
       success: true,
-      message: 'Post updated successfully',
+      message: "Post updated successfully",
       post: post.getPublicData(),
     });
 
     console.log(`✅ Post updated by ${req.user.username}`);
   } catch (error) {
-    console.error('Update post error:', error);
+    console.error("Update post error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error updating post',
+      message: "Error updating post",
       error: error.message,
     });
   }
@@ -250,7 +295,7 @@ exports.deletePost = async (req, res) => {
     if (!post) {
       return res.status(404).json({
         success: false,
-        message: 'Post not found',
+        message: "Post not found",
       });
     }
 
@@ -258,10 +303,29 @@ exports.deletePost = async (req, res) => {
     if (post.authorId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
-        message: 'Not authorized to delete this post',
+        message: "Not authorized to delete this post",
       });
     }
 
+    if (post.attachments && post.attachments.length > 0) {
+      const filePaths = post.attachments
+        .map((attachment) =>
+          storageService.extractFilePathFromUrl(attachment.url)
+        )
+        .filter(Boolean);
+
+      if (filePaths.length > 0) {
+        try {
+          await storageService.deleteMultipleFiles(
+            "post-attachments",
+            filePaths
+          );
+        } catch (error) {
+          console.error("Error deleting attachments:", error);
+          // Continue with post deletion even if file deletion fails
+        }
+      }
+    }
     // Delete all answers associated with this post
     await Answer.deleteMany({ postId: id });
 
@@ -270,20 +334,20 @@ exports.deletePost = async (req, res) => {
 
     // Clear caches
     await cacheService.del(`post:${id}`);
-    await cacheService.delPattern('posts:*');
+    await cacheService.delPattern("posts:*");
     await cacheService.delPattern(`answers:post:${id}:*`);
 
     res.status(200).json({
       success: true,
-      message: 'Post and associated answers deleted successfully',
+      message: "Post and associated answers deleted successfully",
     });
 
     console.log(`✅ Post deleted by ${req.user.username}`);
   } catch (error) {
-    console.error('Delete post error:', error);
+    console.error("Delete post error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error deleting post',
+      message: "Error deleting post",
       error: error.message,
     });
   }
@@ -300,7 +364,7 @@ exports.upvotePost = async (req, res) => {
     if (!post) {
       return res.status(404).json({
         success: false,
-        message: 'Post not found',
+        message: "Post not found",
       });
     }
 
@@ -333,26 +397,29 @@ exports.upvotePost = async (req, res) => {
     // Update author reputation
     const author = await User.findById(post.authorId);
     if (author) {
-      author.reputation = Math.max(0, author.reputation + (alreadyUpvoted ? -5 : 5));
+      author.reputation = Math.max(
+        0,
+        author.reputation + (alreadyUpvoted ? -5 : 5)
+      );
       await author.save();
     }
 
     // Clear caches
     await cacheService.del(`post:${id}`);
-    await cacheService.delPattern('posts:*');
+    await cacheService.delPattern("posts:*");
 
     res.status(200).json({
       success: true,
-      message: alreadyUpvoted ? 'Upvote removed' : 'Post upvoted',
+      message: alreadyUpvoted ? "Upvote removed" : "Post upvoted",
       upvotes: post.upvotes,
       downvotes: post.downvotes,
       netVotes: post.netVotes,
     });
   } catch (error) {
-    console.error('Upvote post error:', error);
+    console.error("Upvote post error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error upvoting post',
+      message: "Error upvoting post",
       error: error.message,
     });
   }
@@ -369,7 +436,7 @@ exports.downvotePost = async (req, res) => {
     if (!post) {
       return res.status(404).json({
         success: false,
-        message: 'Post not found',
+        message: "Post not found",
       });
     }
 
@@ -401,26 +468,29 @@ exports.downvotePost = async (req, res) => {
     // Update author reputation
     const author = await User.findById(post.authorId);
     if (author) {
-      author.reputation = Math.max(0, author.reputation + (alreadyDownvoted ? 2 : -2));
+      author.reputation = Math.max(
+        0,
+        author.reputation + (alreadyDownvoted ? 2 : -2)
+      );
       await author.save();
     }
 
     // Clear caches
     await cacheService.del(`post:${id}`);
-    await cacheService.delPattern('posts:*');
+    await cacheService.delPattern("posts:*");
 
     res.status(200).json({
       success: true,
-      message: alreadyDownvoted ? 'Downvote removed' : 'Post downvoted',
+      message: alreadyDownvoted ? "Downvote removed" : "Post downvoted",
       upvotes: post.upvotes,
       downvotes: post.downvotes,
       netVotes: post.netVotes,
     });
   } catch (error) {
-    console.error('Downvote post error:', error);
+    console.error("Downvote post error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error downvoting post',
+      message: "Error downvoting post",
       error: error.message,
     });
   }
@@ -443,15 +513,15 @@ exports.getPostsByTag = async (req, res) => {
 
     const posts = await Post.find({
       tags: tag,
-      status: 'published',
+      status: "published",
     })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('authorId', 'username avatar reputation')
+      .populate("authorId", "username avatar reputation")
       .lean();
 
-    const total = await Post.countDocuments({ tags: tag, status: 'published' });
+    const total = await Post.countDocuments({ tags: tag, status: "published" });
 
     const response = {
       success: true,
@@ -469,10 +539,10 @@ exports.getPostsByTag = async (req, res) => {
 
     res.status(200).json(response);
   } catch (error) {
-    console.error('Get posts by tag error:', error);
+    console.error("Get posts by tag error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching posts by tag',
+      message: "Error fetching posts by tag",
       error: error.message,
     });
   }
@@ -484,7 +554,7 @@ exports.getUserPosts = async (req, res) => {
     const { userId } = req.params;
     const { page = 1, limit = 10, type } = req.query;
 
-    const query = { authorId: userId, status: 'published' };
+    const query = { authorId: userId, status: "published" };
     if (type) query.type = type;
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
@@ -493,7 +563,7 @@ exports.getUserPosts = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .populate('authorId', 'username avatar reputation')
+      .populate("authorId", "username avatar reputation")
       .lean();
 
     const total = await Post.countDocuments(query);
@@ -509,10 +579,10 @@ exports.getUserPosts = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get user posts error:', error);
+    console.error("Get user posts error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching user posts',
+      message: "Error fetching user posts",
       error: error.message,
     });
   }
