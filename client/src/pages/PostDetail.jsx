@@ -1,17 +1,18 @@
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { postAPI } from '../services/api';
-import { useAuth } from '../hooks/useAuth';
-import Navbar from '../components/common/Navbar';
-import VoteButton from '../components/post/VoteButton';
-import LoadingSpinner from '../components/common/LoadingSpinner';
-import ErrorMessage from '../components/common/ErrorMessage';
-import AnswerList from '../components/answer/AnswerList';
-import AnswerForm from '../components/answer/AnswerForm';
-import { formatTimeAgo, formatNumber } from '../utils/formatters';
-import { FiEye, FiCheckCircle, FiEdit, FiTrash2, FiFile } from 'react-icons/fi';
-import toast from 'react-hot-toast';
-import ConfirmDialog from '../components/common/ConfirmDialog';
+import { useState, useEffect } from "react";
+import { useParams, useNavigate, Link } from "react-router-dom";
+import { postAPI } from "../services/api";
+import { useAuth } from "../hooks/useAuth";
+import Navbar from "../components/common/Navbar";
+import VoteButton from "../components/post/VoteButton";
+import LoadingSpinner from "../components/common/LoadingSpinner";
+import ErrorMessage from "../components/common/ErrorMessage";
+import AnswerList from "../components/answer/AnswerList";
+import AnswerForm from "../components/answer/AnswerForm";
+import { formatTimeAgo, formatNumber } from "../utils/formatters";
+import { FiEye, FiCheckCircle, FiEdit, FiTrash2, FiFile } from "react-icons/fi";
+import toast from "react-hot-toast";
+import ConfirmDialog from "../components/common/ConfirmDialog";
+import MediaViewer from "../components/common/MediaViewer";
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -21,6 +22,8 @@ export default function PostDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
 
   useEffect(() => {
     fetchPost();
@@ -34,7 +37,7 @@ export default function PostDetail() {
       setPost(response.data.post);
       setError(null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load post');
+      setError(err.response?.data?.message || "Failed to load post");
     } finally {
       setLoading(false);
     }
@@ -43,10 +46,10 @@ export default function PostDetail() {
   const handleDelete = async () => {
     try {
       await postAPI.deletePost(id);
-      toast.success('Post deleted successfully');
-      navigate('/feed');
+      toast.success("Post deleted successfully");
+      navigate("/feed");
     } catch {
-      toast.error('Failed to delete post');
+      toast.error("Failed to delete post");
     }
   };
 
@@ -86,7 +89,10 @@ export default function PostDetail() {
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-3">
                 <img
-                  src={post.authorId?.avatar || `https://ui-avatars.com/api/?name=${post.authorId?.username}&background=random`}
+                  src={
+                    post.authorId?.avatar ||
+                    `https://ui-avatars.com/api/?name=${post.authorId?.username}&background=random`
+                  }
                   alt={post.authorId?.username}
                   className="w-12 h-12 rounded-full"
                 />
@@ -131,16 +137,20 @@ export default function PostDetail() {
 
             {/* Type Badge */}
             <div className="flex items-center space-x-2">
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                post.type === 'question' ? 'bg-blue-100 text-blue-700' :
-                post.type === 'note' ? 'bg-green-100 text-green-700' :
-                'bg-purple-100 text-purple-700'
-              }`}>
-                {post.type === 'question' && '❓ Question'}
-                {post.type === 'note' && '📝 Note'}
-                {post.type === 'article' && '📄 Article'}
+              <span
+                className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                  post.type === "question"
+                    ? "bg-blue-100 text-blue-700"
+                    : post.type === "note"
+                      ? "bg-green-100 text-green-700"
+                      : "bg-purple-100 text-purple-700"
+                }`}
+              >
+                {post.type === "question" && "❓ Question"}
+                {post.type === "note" && "📝 Note"}
+                {post.type === "article" && "📄 Article"}
               </span>
-              {post.type === 'question' && post.acceptedAnswerId && (
+              {post.type === "question" && post.acceptedAnswerId && (
                 <span className="inline-flex items-center space-x-1 px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700">
                   <FiCheckCircle className="w-4 h-4" />
                   <span>Solved</span>
@@ -152,7 +162,7 @@ export default function PostDetail() {
             <h1 className="text-3xl font-bold text-gray-900">{post.title}</h1>
 
             {/* Content */}
-            <div 
+            <div
               className="prose prose-lg max-w-none"
               dangerouslySetInnerHTML={{ __html: post.content }}
             />
@@ -160,17 +170,20 @@ export default function PostDetail() {
             {/* Attachments */}
             {post.attachments && post.attachments.length > 0 && (
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-gray-700">Attachments:</h3>
+                <h3 className="text-sm font-semibold text-gray-700">
+                  Attachments:
+                </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {post.attachments.map((attachment, index) => (
-                    <a
+                    <button
                       key={index}
-                      href={attachment.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                      onClick={() => {
+                        setMediaViewerIndex(index);
+                        setMediaViewerOpen(true);
+                      }}
+                      className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 hover:border-gray-300 transition-all text-left w-full"
                     >
-                      {attachment.type === 'image' ? (
+                      {attachment.type === "image" ? (
                         <img
                           src={attachment.url}
                           alt={attachment.name}
@@ -186,13 +199,22 @@ export default function PostDetail() {
                           {attachment.name}
                         </p>
                         <p className="text-xs text-gray-500">
-                          {attachment.type === 'image' ? 'Image' : 'PDF'}
+                          {attachment.type === "image" ? "Image" : "PDF"}
                         </p>
                       </div>
-                    </a>
+                    </button>
                   ))}
                 </div>
               </div>
+            )}
+
+            {/* Media Viewer Modal */}
+            {mediaViewerOpen && (
+              <MediaViewer
+                attachments={post.attachments}
+                initialIndex={mediaViewerIndex}
+                onClose={() => setMediaViewerOpen(false)}
+              />
             )}
 
             {/* Tags */}
@@ -221,7 +243,8 @@ export default function PostDetail() {
                 size="lg"
               />
               <div className="text-sm text-gray-600">
-                {formatNumber(post.answerCount || 0)} answer{post.answerCount !== 1 ? 's' : ''}
+                {formatNumber(post.answerCount || 0)} answer
+                {post.answerCount !== 1 ? "s" : ""}
               </div>
             </div>
           </div>
@@ -230,10 +253,10 @@ export default function PostDetail() {
         {/* Answers Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-xl font-bold text-gray-900 mb-4">
-            {post.answerCount || 0} Answer{post.answerCount !== 1 ? 's' : ''}
+            {post.answerCount || 0} Answer{post.answerCount !== 1 ? "s" : ""}
           </h2>
-          <AnswerList 
-            postId={id} 
+          <AnswerList
+            postId={id}
             acceptedAnswerId={post.acceptedAnswerId}
             isPostAuthor={isAuthor}
           />
@@ -241,7 +264,9 @@ export default function PostDetail() {
 
         {/* Answer Form */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Answer</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            Your Answer
+          </h3>
           <AnswerForm postId={id} onAnswerCreated={fetchPost} />
         </div>
       </div>

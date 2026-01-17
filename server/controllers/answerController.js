@@ -2,6 +2,7 @@ const Answer = require('../models/Answer');
 const Post = require('../models/Post');
 const User = require('../models/User');
 const cacheService = require('../services/cacheService');
+const reputationService=require("../services/reputationService");
 
 
 // @desc    Create an answer
@@ -259,6 +260,12 @@ exports.upvoteAnswer = async (req, res) => {
         (id) => id.toString() !== userId.toString()
       );
       answer.upvotes -= 1;
+
+      await reputationService.addReputation(
+        answer.authorId,
+        -reputationService.POINTS.ANSWER_UPVOTED,
+        'Answer upvote removed'
+      );
     } else {
       // Add upvote
       answer.upvotedBy.push(userId);
@@ -270,17 +277,17 @@ exports.upvoteAnswer = async (req, res) => {
           (id) => id.toString() !== userId.toString()
         );
         answer.downvotes -= 1;
+
+        await reputationService.addReputation(
+          answer.authorId,
+          -reputationService.POINTS.ANSWER_DOWNVOTED,
+          'Answer downvote removed'
+        );
       }
+      await reputationService.awardAnswerUpvote(answer.authorId);
     }
 
     await answer.save();
-
-    // Update author reputation
-    const author = await User.findById(answer.authorId);
-    if (author) {
-      author.reputation = Math.max(0, author.reputation + (alreadyUpvoted ? -10 : 10));
-      await author.save();
-    }
 
     // Clear caches
     await cacheService.delPattern(`answers:post:${answer.postId}:*`);
@@ -328,6 +335,12 @@ exports.downvoteAnswer = async (req, res) => {
         (id) => id.toString() !== userId.toString()
       );
       answer.downvotes -= 1;
+
+      await reputationService.addReputation(
+        answer.authorId,
+        -reputationService.POINTS.ANSWER_DOWNVOTED,
+        'Answer downvote removed'
+      );
     } else {
       // Add downvote
       answer.downvotedBy.push(userId);
@@ -339,17 +352,17 @@ exports.downvoteAnswer = async (req, res) => {
           (id) => id.toString() !== userId.toString()
         );
         answer.upvotes -= 1;
+
+        await reputationService.addReputation(
+          answer.authorId,
+          -reputationService.POINTS.ANSWER_UPVOTED,
+          'Answer upvote removed'
+        );
       }
+      await reputationService.penalizeAnswerDownvote(answer.authorId);
     }
 
     await answer.save();
-
-    // Update author reputation
-    const author = await User.findById(answer.authorId);
-    if (author) {
-      author.reputation = Math.max(0, author.reputation + (alreadyDownvoted ? 3 : -3));
-      await author.save();
-    }
 
     // Clear caches
     await cacheService.delPattern(`answers:post:${answer.postId}:*`);
@@ -419,6 +432,12 @@ exports.acceptAnswer = async (req, res) => {
       if (previousAnswer) {
         previousAnswer.isAccepted = false;
         await previousAnswer.save();
+
+        await reputationService.addReputation(
+          previousAnswer.authorId,
+          -reputationService.POINTS.ANSWER_ACCEPTED,
+          'Answer unaccepted'
+        );
       }
     }
 
@@ -430,12 +449,7 @@ exports.acceptAnswer = async (req, res) => {
     post.acceptedAnswerId = answer._id;
     await post.save();
 
-    // Give bonus reputation to answer author
-    const answerAuthor = await User.findById(answer.authorId);
-    if (answerAuthor) {
-      answerAuthor.reputation += 15; // Bonus for accepted answer
-      await answerAuthor.save();
-    }
+    await reputationService.awardAcceptedAnswer(answer.authorId);
 
     // Clear caches
     await cacheService.delPattern(`answers:post:${answer.postId}:*`);

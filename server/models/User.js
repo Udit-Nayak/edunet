@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema(
       select: false,
     },
 
-    //Profile Info
+    // Profile Info
     avatar: {
       type: String,
       default: function () {
@@ -78,6 +78,45 @@ const userSchema = new mongoose.Schema(
       {
         type: mongoose.Schema.Types.ObjectId,
         ref: "Badge",
+      },
+    ],
+
+    // Streak tracking
+    currentStreak: {
+      type: Number,
+      default: 0,
+    },
+
+    longestStreak: {
+      type: Number,
+      default: 0,
+    },
+
+    lastActiveDate: {
+      type: Date,
+      default: null,
+    },
+
+    // Milestones
+    postMilestones: {
+      type: [Number],
+      default: [],
+    },
+
+    streakMilestones: {
+      type: [Number],
+      default: [],
+    },
+
+    // Reputation history
+    reputationHistory: [
+      {
+        points: Number,
+        reason: String,
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
       },
     ],
 
@@ -159,6 +198,9 @@ userSchema.methods.getPublicProfile = function() {
     isEmailVerified: this.isEmailVerified,
     createdAt: this.createdAt,
     lastActive: this.lastActive,
+    // New gamification fields
+    currentStreak: this.currentStreak || 0,
+    longestStreak: this.longestStreak || 0,
   };
 };
 

@@ -3,6 +3,7 @@ const Answer = require("../models/Answer");
 const User = require("../models/User");
 const cacheService = require("../services/cacheService");
 const storageService = require("../services/storageService");
+const reputationService=require("../services/reputationService");
 
 // @route   POST /api/posts
 exports.createPost = async (req, res) => {
@@ -72,6 +73,13 @@ exports.createPost = async (req, res) => {
     await post.populate("authorId", "username avatar reputation");
 
     await cacheService.delPattern("posts:*");
+
+    const userPostCount = await Post.countDocuments({ 
+      authorId: req.user._id,
+      status: 'published'
+    });
+    
+    await reputationService.checkPostMilestone(req.user._id, userPostCount);
 
     res.status(201).json({
       success: true,

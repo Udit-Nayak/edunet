@@ -1,9 +1,48 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { postAPI } from '../services/api';
 import Navbar from '../components/common/Navbar';
+import PostCard from '../components/post/PostCard';
+import LoadingSpinner from '../components/common/LoadingSpinner';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  const [posts, setPosts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('all'); // all, question, note, article
+
+  useEffect(() => {
+    if (user?._id) {
+      fetchUserPosts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, activeTab]);
+
+  const fetchUserPosts = async () => {
+    try {
+      setLoading(true);
+      const params = {
+        page: 1,
+        limit: 20,
+      };
+      
+      if (activeTab !== 'all') {
+        params.type = activeTab;
+      }
+
+      const response = await postAPI.getUserPosts(user._id, params);
+      setPosts(response.data.posts);
+    } catch (error) {
+      console.error('Failed to fetch posts:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePostDelete = (postId) => {
+    setPosts(posts.filter(post => post._id !== postId));
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -118,16 +157,78 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Coming Soon */}
-          <div className="mt-12 card max-w-2xl mx-auto">
-            <h2 className="text-2xl font-semibold mb-4">🚀 Coming Soon</h2>
-            <ul className="text-left space-y-2 text-gray-600">
-              <li>• Create and share posts</li>
-              <li>• Ask and answer questions</li>
-              <li>• Upvote helpful content</li>
-              <li>• Build your reputation</li>
-              <li>• Connect with other learners</li>
-            </ul>
+          {/* My Posts Section */}
+          <div className="mt-12 max-w-4xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-2xl font-semibold">My Content</h2>
+              <Link to="/create-post" className="btn-primary text-sm">
+                ✏️ Create New Post
+              </Link>
+            </div>
+
+            {/* Filter Tabs */}
+            <div className="flex space-x-2 mb-6 overflow-x-auto">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                  activeTab === 'all'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                All Posts
+              </button>
+              <button
+                onClick={() => setActiveTab('question')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                  activeTab === 'question'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Questions
+              </button>
+              <button
+                onClick={() => setActiveTab('note')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                  activeTab === 'note'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Notes
+              </button>
+              <button
+                onClick={() => setActiveTab('article')}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                  activeTab === 'article'
+                    ? 'bg-primary-600 text-white'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                Articles
+              </button>
+            </div>
+
+            {/* Posts List */}
+            {loading ? (
+              <LoadingSpinner size="lg" text="Loading your posts..." />
+            ) : posts.length === 0 ? (
+              <div className="text-center py-12 bg-white rounded-lg shadow-sm border border-gray-200">
+                <div className="text-gray-400 text-6xl mb-4">📝</div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts yet</h3>
+                <p className="text-gray-600 mb-4">Start sharing your knowledge with the community!</p>
+                <Link to="/create-post" className="btn-primary inline-block">
+                  Create Your First Post
+                </Link>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <PostCard key={post._id} post={post} onDelete={handlePostDelete} />
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>

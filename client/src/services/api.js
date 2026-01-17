@@ -40,7 +40,7 @@ export const postAPI={
     upvotePost:(id)=>API.post(`/posts/${id}/upvote`),
     downvotePost:(id)=>API.post(`/posts/${id}/downvote`),
     getPostsByTag:(tag, params)=>API.get(`/posts/tag/${tag}`, {params}),
-    getUserPosts:(userId, params)=>API.get(`/posts/users/${userId}`, {params}),
+    getUserPosts:(userId, params)=>API.get(`/posts/user/${userId}`, {params}),
 }
 
 export const answerAPI = {

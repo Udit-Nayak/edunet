@@ -23,12 +23,15 @@ app.use(express.json({ limit: '50mb' })); // Increased for base64 images
 app.use(express.urlencoded({ extended: true, limit: '50mb' })); 
 app.use(cookieParser()); 
 
+const { trackActivity } = require('./middleware/activityMiddleware');
+
+
 // Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/posts', require('./routes/postRoutes'));
-app.use('/api/answers', require('./routes/answerRoutes'));
-app.use('/api/comments', require('./routes/commentRoutes'));
-app.use('/api/upload', require('./routes/uploadRoutes'));
+app.use('/api/auth', trackActivity, require('./routes/authRoutes'));
+app.use('/api/posts', trackActivity, require('./routes/postRoutes'));
+app.use('/api/answers', trackActivity, require('./routes/answerRoutes'));
+app.use('/api/comments', trackActivity, require('./routes/commentRoutes'));
+app.use('/api/upload', trackActivity, require('./routes/uploadRoutes'));
 
 
 

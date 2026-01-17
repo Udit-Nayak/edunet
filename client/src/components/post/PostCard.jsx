@@ -1,63 +1,76 @@
-import { Link, useNavigate } from 'react-router-dom';
-import { formatTimeAgo, formatNumber, truncateText } from '../../utils/formatters';
-import VoteButton from './VoteButton';
-import { postAPI } from '../../services/api';
-import { FiMessageSquare, FiEye, FiCheckCircle, FiMoreVertical, FiImage } from 'react-icons/fi';
-import { useState } from 'react';
-import { useAuth } from '../../hooks/useAuth';
-import ConfirmDialog from '../common/ConfirmDialog';
-import toast from 'react-hot-toast';
+import { Link, useNavigate } from "react-router-dom";
+import {
+  formatTimeAgo,
+  formatNumber,
+  truncateText,
+} from "../../utils/formatters";
+import VoteButton from "./VoteButton";
+import { postAPI } from "../../services/api";
+import {
+  FiMessageSquare,
+  FiEye,
+  FiCheckCircle,
+  FiMoreVertical,
+  FiImage,
+} from "react-icons/fi";
+import { useState } from "react";
+import { useAuth } from "../../hooks/useAuth";
+import ConfirmDialog from "../common/ConfirmDialog";
+import toast from "react-hot-toast";
+import MediaViewer from "../common/MediaViewer";
 
 export default function PostCard({ post, onDelete }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
+  const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
 
   const isAuthor = user?._id === post.authorId?._id;
 
   const getTypeColor = (type) => {
     switch (type) {
-      case 'question':
-        return 'bg-blue-100 text-blue-700';
-      case 'note':
-        return 'bg-green-100 text-green-700';
-      case 'article':
-        return 'bg-purple-100 text-purple-700';
+      case "question":
+        return "bg-blue-100 text-blue-700";
+      case "note":
+        return "bg-green-100 text-green-700";
+      case "article":
+        return "bg-purple-100 text-purple-700";
       default:
-        return 'bg-gray-100 text-gray-700';
+        return "bg-gray-100 text-gray-700";
     }
   };
 
   const getTypeIcon = (type) => {
     switch (type) {
-      case 'question':
-        return '❓';
-      case 'note':
-        return '📝';
-      case 'article':
-        return '📄';
+      case "question":
+        return "❓";
+      case "note":
+        return "📝";
+      case "article":
+        return "📄";
       default:
-        return '📌';
+        return "📌";
     }
   };
 
   // Strip HTML tags for preview
   const getPlainText = (html) => {
-    const tmp = document.createElement('div');
+    const tmp = document.createElement("div");
     tmp.innerHTML = html;
-    return tmp.textContent || tmp.innerText || '';
+    return tmp.textContent || tmp.innerText || "";
   };
 
   const handleDelete = async () => {
     try {
       await postAPI.deletePost(post._id);
-      toast.success('Post deleted successfully');
+      toast.success("Post deleted successfully");
       if (onDelete) {
         onDelete(post._id);
       }
     } catch {
-      toast.error('Failed to delete post');
+      toast.error("Failed to delete post");
     }
   };
 
@@ -69,7 +82,10 @@ export default function PostCard({ post, onDelete }) {
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center space-x-3 flex-1 min-w-0">
               <img
-                src={post.authorId?.avatar || `https://ui-avatars.com/api/?name=${post.authorId?.username}&background=random`}
+                src={
+                  post.authorId?.avatar ||
+                  `https://ui-avatars.com/api/?name=${post.authorId?.username}&background=random`
+                }
                 alt={post.authorId?.username}
                 className="w-10 h-10 rounded-full flex-shrink-0"
               />
@@ -87,7 +103,9 @@ export default function PostCard({ post, onDelete }) {
                   </span>
                 </div>
                 <div className="flex items-center space-x-2 mt-1">
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${getTypeColor(post.type)}`}>
+                  <span
+                    className={`text-xs px-2 py-0.5 rounded-full ${getTypeColor(post.type)}`}
+                  >
                     {getTypeIcon(post.type)} {post.type}
                   </span>
                   {post.isEdited && (
@@ -163,9 +181,74 @@ export default function PostCard({ post, onDelete }) {
 
           {/* Attachments Preview */}
           {post.attachments && post.attachments.length > 0 && (
-            <div className="flex items-center space-x-2 mb-3 text-sm text-gray-500">
-              <FiImage className="w-4 h-4" />
-              <span>{post.attachments.length} attachment(s)</span>
+            <div className="mb-3">
+              {post.attachments.length === 1 ? (
+                // Single attachment - show larger preview
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setMediaViewerIndex(0);
+                    setMediaViewerOpen(true);
+                  }}
+                  className="relative group w-full"
+                >
+                  {post.attachments[0].type === "image" ? (
+                    <img
+                      src={post.attachments[0].url}
+                      alt={post.attachments[0].name}
+                      className="w-full h-64 object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity"
+                    />
+                  ) : (
+                    <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
+                      <FiImage className="w-6 h-6 text-gray-500" />
+                      <div className="flex-1 text-left">
+                        <p className="text-sm font-medium text-gray-900">
+                          {post.attachments[0].name}
+                        </p>
+                        <p className="text-xs text-gray-500">PDF Document</p>
+                      </div>
+                    </div>
+                  )}
+                </button>
+              ) : (
+                // Multiple attachments - show grid
+                <div className="grid grid-cols-2 gap-2">
+                  {post.attachments.slice(0, 4).map((attachment, index) => (
+                    <button
+                      key={index}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setMediaViewerIndex(index);
+                        setMediaViewerOpen(true);
+                      }}
+                      className="relative group"
+                    >
+                      {attachment.type === "image" ? (
+                        <>
+                          <img
+                            src={attachment.url}
+                            alt={attachment.name}
+                            className="w-full h-32 object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity"
+                          />
+                          {index === 3 && post.attachments.length > 4 && (
+                            <div className="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex items-center justify-center">
+                              <span className="text-white text-2xl font-bold">
+                                +{post.attachments.length - 4}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="w-full h-32 bg-red-100 rounded-lg border border-gray-200 flex items-center justify-center group-hover:bg-red-200 transition-colors">
+                          <FiImage className="w-8 h-8 text-red-600" />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
@@ -194,7 +277,7 @@ export default function PostCard({ post, onDelete }) {
                 <span>{formatNumber(post.viewCount || 0)} views</span>
               </div>
 
-              {post.type === 'question' && post.acceptedAnswerId && (
+              {post.type === "question" && post.acceptedAnswerId && (
                 <div className="flex items-center space-x-1 text-green-600">
                   <FiCheckCircle className="w-4 h-4" />
                   <span>Solved</span>
@@ -204,6 +287,15 @@ export default function PostCard({ post, onDelete }) {
           </div>
         </div>
       </div>
+
+      {/* Media Viewer Modal */}
+      {mediaViewerOpen && (
+        <MediaViewer
+          attachments={post.attachments}
+          initialIndex={mediaViewerIndex}
+          onClose={() => setMediaViewerOpen(false)}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <ConfirmDialog
