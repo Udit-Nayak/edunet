@@ -29,6 +29,7 @@ const authSlice = createSlice({
       state.loading = false;
       state.needsProfileSetup = false;
       localStorage.removeItem("token");
+      sessionStorage.clear();
     },
     updateUser: (state, action) => {
       state.user = { ...state.user, ...action.payload };

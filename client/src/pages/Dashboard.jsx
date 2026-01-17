@@ -1,56 +1,14 @@
-import { useNavigate, Link } from 'react-router-dom';
-import { useDispatch } from 'react-redux';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { authAPI } from '../services/api';
-import { logout as logoutAction } from '../redux/slices/authSlice';
-import toast from 'react-hot-toast';
+import Navbar from '../components/common/Navbar';
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    try {
-      await authAPI.logout();
-      dispatch(logoutAction());
-      toast.success('Logged out successfully');
-      navigate('/');
-    } catch {
-      toast.error('Logout failed');
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navbar */}
-      <nav className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-2xl font-bold text-primary-600">EduConnect</h1>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-3">
-                <img
-                  src={user?.avatar}
-                  alt={user?.username}
-                  className="w-10 h-10 rounded-full"
-                />
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {user?.username}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    Reputation: {user?.reputation}
-                  </p>
-                </div>
-              </div>
-              <button onClick={handleLogout} className="btn-secondary">
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      </nav>
+      {/* Use the common Navbar component */}
+      <Navbar />
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -140,19 +98,19 @@ export default function Dashboard() {
               <div className="flex space-x-6 pt-4 border-t">
                 <div className="text-center">
                   <p className="text-2xl font-bold text-primary-600">
-                    {user?.reputation}
+                    {user?.reputation || 0}
                   </p>
                   <p className="text-sm text-gray-600">Reputation</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-primary-600">
-                    {user?.followersCount}
+                    {user?.followersCount || 0}
                   </p>
                   <p className="text-sm text-gray-600">Followers</p>
                 </div>
                 <div className="text-center">
                   <p className="text-2xl font-bold text-primary-600">
-                    {user?.followingCount}
+                    {user?.followingCount || 0}
                   </p>
                   <p className="text-sm text-gray-600">Following</p>
                 </div>

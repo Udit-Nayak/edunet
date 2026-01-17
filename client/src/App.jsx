@@ -15,10 +15,16 @@ import Register from './pages/Register';
 import ProfileSetup from './pages/ProfileSetup';
 import Dashboard from './pages/Dashboard';
 import EditProfile from './pages/EditProfile';
+import Feed from './pages/Feed';
+import CreatePost from './pages/CreatePost';
+import EditPost from './pages/EditPost';
+import PostDetail from './pages/PostDetail';
 
 // Protected Route Component
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, skipProfileCheck = false }) {
   const { isAuthenticated, loading, needsProfileSetup } = useAuth();
+
+  console.log('ProtectedRoute:', { isAuthenticated, loading, needsProfileSetup, skipProfileCheck });
 
   if (loading) {
     return (
@@ -29,17 +35,20 @@ function ProtectedRoute({ children }) {
   }
 
   if (!isAuthenticated) {
+    console.log('Not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
-  if (needsProfileSetup) {
+  // Skip profile setup check if this is the profile setup page itself
+  if (!skipProfileCheck && needsProfileSetup) {
+    console.log('Needs profile setup, redirecting to profile-setup');
     return <Navigate to="/profile-setup" replace />;
   }
 
   return children;
 }
 
-// Public Route Component (redirect if already authenticated)
+// Public Route Component
 function PublicRoute({ children }) {
   const { isAuthenticated, loading, needsProfileSetup } = useAuth();
 
@@ -56,7 +65,7 @@ function PublicRoute({ children }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/feed" replace />;
   }
 
   return children;
@@ -64,31 +73,37 @@ function PublicRoute({ children }) {
 
 function AppContent() {
   const dispatch = useDispatch();
-  const { isAuthenticated } = useAuth();
 
   // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
+      console.log('checkAuth - token:', token ? 'exists' : 'none');
+      
       if (token) {
         try {
           dispatch(setLoading(true));
           const response = await authAPI.getMe();
+          console.log('getMe response:', response.data);
           
-          // Check if profile needs setup
           const user = response.data.user;
           const needsSetup = !user.bio && !user.college && user.interests.length === 0;
+          
+          console.log('User loaded:', user.username, 'needsSetup:', needsSetup);
           
           dispatch(loginSuccess({
             user: user,
             token: token,
             needsProfileSetup: needsSetup,
           }));
-        } catch {
+        } catch (error) {
+          console.error('Auth check failed:', error);
           dispatch(logout());
         } finally {
           dispatch(setLoading(false));
         }
+      } else {
+        dispatch(setLoading(false));
       }
     };
 
@@ -100,50 +115,26 @@ function AppContent() {
       <Routes>
         {/* Public Routes */}
         <Route path="/" element={<Landing />} />
-        <Route
-          path="/login"
-          element={
-            <PublicRoute>
-              <Login />
-            </PublicRoute>
-          }
-        />
-        <Route
-          path="/register"
-          element={
-            <PublicRoute>
-              <Register />
-            </PublicRoute>
-          }
-        />
+        <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+        <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-        {/* Profile Setup Route */}
-        <Route
-          path="/profile-setup"
+        {/* Profile Setup - Special route that skips profile check */}
+        <Route 
+          path="/profile-setup" 
           element={
-            isAuthenticated ? <ProfileSetup /> : <Navigate to="/login" replace />
-          }
+            <ProtectedRoute skipProfileCheck={true}>
+              <ProfileSetup />
+            </ProtectedRoute>
+          } 
         />
 
         {/* Protected Routes */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Edit Profile Route */}
-        <Route
-          path="/edit-profile"
-          element={
-            <ProtectedRoute>
-              <EditProfile />
-            </ProtectedRoute>
-          }
-        />
+        <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+        <Route path="/create-post" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
+        <Route path="/post/:id/edit" element={<ProtectedRoute><EditPost /></ProtectedRoute>} />
+        <Route path="/post/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />

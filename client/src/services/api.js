@@ -1,6 +1,6 @@
 import axios, { Axios } from 'axios';
 const API= axios.create({
-    baseURL:'http://localhost:5000/api',
+    baseURL:import.meta.env.VITE_API_BASE_URL || 'https://localhost:5000/api',
     withCredentials:true,
 })
 
@@ -20,6 +20,47 @@ export const authAPI = {
   logout: () => API.post('/auth/logout'),
   updateProfile: (data) => API.put('/auth/profile', data),
   updateUsername: (username) => API.put('/auth/username', { username }),
+};
+
+export const uploadAPI={
+    getSignedUrl:(bucket, fileName)=>
+        API.post('/upload/signed-url',{bucket, fileName}),
+    deleteFile:(bucket, filePath)=>
+        API.delete('/upload/file', {data:{bucket, filePath}}),
+    getMyFiles:(bucket)=>
+        API.get(`/upload/my-files/${bucket}`),
+};
+
+export const postAPI={
+    createPost:(data)=>API.post('/posts', data),
+    getPosts:(params)=>API.get('/posts', {params}),
+    getPostById:(id)=>API.get(`/posts/${id}`),
+    updatePost:(id, data)=>API.put( `/posts/${id}`, data),
+    deletePost:(id)=>API.delete(`/posts/${id}`),
+    upvotePost:(id)=>API.post(`/posts/${id}/upvote`),
+    downvotePost:(id)=>API.post(`/posts/${id}/downvote`),
+    getPostsByTag:(tag, params)=>API.get(`/posts/tag/${tag}`, {params}),
+    getUserPosts:(userId, params)=>API.get(`/posts/users/${userId}`, {params}),
+}
+
+export const answerAPI = {
+  createAnswer: (data) => API.post('/answers', data),
+  getAnswersByPost: (postId, params) => API.get(`/answers/post/${postId}`, { params }),
+  updateAnswer: (id, data) => API.put(`/answers/${id}`, data),
+  deleteAnswer: (id) => API.delete(`/answers/${id}`),
+  upvoteAnswer: (id) => API.post(`/answers/${id}/upvote`),
+  downvoteAnswer: (id) => API.post(`/answers/${id}/downvote`),
+  acceptAnswer: (id) => API.post(`/answers/${id}/accept`),
+};
+
+// Comment APIs
+export const commentAPI = {
+  createComment: (data) => API.post('/comments', data),
+  getCommentsByPost: (postId, params) => API.get(`/comments/post/${postId}`, { params }),
+  getCommentsByAnswer: (answerId, params) => API.get(`/comments/answer/${answerId}`, { params }),
+  updateComment: (id, data) => API.put(`/comments/${id}`, data),
+  deleteComment: (id) => API.delete(`/comments/${id}`),
+  upvoteComment: (id) => API.post(`/comments/${id}/upvote`),
 };
 
 export default API;
