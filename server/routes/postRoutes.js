@@ -10,20 +10,58 @@ const {
   downvotePost,
   getPostsByTag,
   getUserPosts,
+  savePost,
+  getSavedPosts,
+  checkPostSaved,
 } = require('../controllers/postController');
 const { protect } = require('../middleware/authMiddleware');
 
-// Public routes
-router.get('/', getPosts);
-router.get('/tag/:tag', getPostsByTag);
-router.get('/user/:userId', getUserPosts);
-router.get('/:id', getPostById);
 
-// Protected routes
+const optionalAuth = async (req, res, next) => {
+  try {
+    let token;
+    
+    if (req.headers.authorization?.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    } else if (req.cookies.token) {
+      token = req.cookies.token;
+    }
+    
+    if (token) {
+      const { verifyToken } = require('../utils/jwt');
+      const User = require('../models/User');
+      
+      const decoded = verifyToken(token);
+      const user = await User.findById(decoded.userId).select('-password');
+      
+      if (user && user.isActive) {
+        req.user = user;
+      }
+    }
+    
+    next();
+  } catch (error) {
+    next();
+  }
+};
+
+
+// Public routes
+router.get('/',optionalAuth ,getPosts);
+router.get('/tag/:tag',optionalAuth, getPostsByTag);
+router.get('/user/:userId',optionalAuth, getUserPosts);
+
+// Protected routes - IMPORTANT: Put specific routes BEFORE dynamic :id route
+router.get('/saved', protect, getSavedPosts); // THIS MUST BE BEFORE /:id
+router.get('/:id/is-saved', protect, checkPostSaved);
+router.get('/:id',optionalAuth, getPostById); // This should be AFTER /saved
+
+// Other protected routes
 router.post('/', protect, createPost);
 router.put('/:id', protect, updatePost);
 router.delete('/:id', protect, deletePost);
 router.post('/:id/upvote', protect, upvotePost);
 router.post('/:id/downvote', protect, downvotePost);
+router.post('/:id/save', protect, savePost);
 
 module.exports = router;

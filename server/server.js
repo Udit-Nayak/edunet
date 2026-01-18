@@ -32,6 +32,7 @@ app.use('/api/posts', trackActivity, require('./routes/postRoutes'));
 app.use('/api/answers', trackActivity, require('./routes/answerRoutes'));
 app.use('/api/comments', trackActivity, require('./routes/commentRoutes'));
 app.use('/api/upload', trackActivity, require('./routes/uploadRoutes'));
+app.use('/api/notifications', trackActivity, require('./routes/notificationRoutes'));
 
 
 

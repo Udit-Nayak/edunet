@@ -3,6 +3,7 @@ const Post = require('../models/Post');
 const User = require('../models/User');
 const cacheService = require('../services/cacheService');
 const reputationService=require("../services/reputationService");
+const notificationService = require('../services/notificationService');
 
 
 // @desc    Create an answer
@@ -38,6 +39,13 @@ exports.createAnswer = async (req, res) => {
     // Update post answer count
     post.answerCount += 1;
     await post.save();
+
+    await notificationService.notifyNewAnswer(
+      post.authorId,
+      req.user._id,
+      postId,
+      answer._id
+    );
 
     // Populate author info
     await answer.populate('authorId', 'username avatar reputation');
@@ -284,6 +292,13 @@ exports.upvoteAnswer = async (req, res) => {
           'Answer downvote removed'
         );
       }
+
+      await notificationService.notifyAnswerUpvote(
+        answer.authorId,
+        userId,
+        answer._id,
+        answer.postId
+      );
       await reputationService.awardAnswerUpvote(answer.authorId);
     }
 
@@ -449,8 +464,13 @@ exports.acceptAnswer = async (req, res) => {
     post.acceptedAnswerId = answer._id;
     await post.save();
 
+    await notificationService.notifyAnswerAccepted(
+      answer.authorId,
+      req.user._id,
+      answer.postId,
+      answer._id
+    );
     await reputationService.awardAcceptedAnswer(answer.authorId);
-
     // Clear caches
     await cacheService.delPattern(`answers:post:${answer.postId}:*`);
     await cacheService.del(`post:${answer.postId}`);

@@ -329,3 +329,38 @@ exports.updateUsername = async (req, res) => {
     });
   }
 };
+
+// @route   GET /api/auth/user/:userId
+exports.getUserById = async (req, res) => {
+  try {
+    const { userId } = req.params;
+    
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+    
+    if (!user.isActive) {
+      return res.status(404).json({
+        success: false,
+        message: 'User account is inactive',
+      });
+    }
+    
+    res.status(200).json({
+      success: true,
+      user: user.getPublicProfile(),
+    });
+  } catch (error) {
+    console.error('Get user by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching user data',
+      error: error.message,
+    });
+  }
+};

@@ -19,6 +19,7 @@ import Feed from './pages/Feed';
 import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
 import PostDetail from './pages/PostDetail';
+import UserProfile from './pages/UserProfile';
 
 // Protected Route Component
 function ProtectedRoute({ children, skipProfileCheck = false }) {
@@ -133,6 +134,7 @@ function AppContent() {
         <Route path="/create-post" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
         <Route path="/post/:id/edit" element={<ProtectedRoute><EditPost /></ProtectedRoute>} />
         <Route path="/post/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />
+        <Route path="/user/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
 

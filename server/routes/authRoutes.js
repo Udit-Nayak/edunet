@@ -7,7 +7,8 @@ const {
   getMe,
   logout,
   updateProfile,
-  updateUsername
+  updateUsername,
+  getUserById,
 } = require('../controllers/authController');
 const { protect, verifyFirebaseToken } = require('../middleware/authMiddleware');
 
@@ -15,10 +16,10 @@ const { protect, verifyFirebaseToken } = require('../middleware/authMiddleware')
 router.post('/register', register);
 router.post('/login', login);
 router.post('/google', verifyFirebaseToken, googleAuth);
+router.get('/user/:userId', getUserById); 
 
 router.get('/me', protect, getMe);
 router.post('/logout', protect, logout);
-
 router.put('/profile', protect, updateProfile);
 router.put('/username', protect, updateUsername);
 

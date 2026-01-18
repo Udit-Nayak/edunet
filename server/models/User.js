@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const bcrypt = require('bcryptjs');
+const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
@@ -135,6 +135,13 @@ const userSchema = new mongoose.Schema(
       },
     ],
 
+    savedPosts: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Post",
+      },
+    ],
+
     // Auth
     authProvider: {
       type: String,
@@ -157,30 +164,30 @@ const userSchema = new mongoose.Schema(
       default: Date.now,
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 userSchema.index({ reputation: -1 });
 
-userSchema.pre('save', async function() {
-    if (!this.isModified('password')) {
-      return;
-    }
-    
-    if (this.password) {
-      const salt = await bcrypt.genSalt(10);
-      this.password = await bcrypt.hash(this.password, salt);
-    }
+userSchema.pre("save", async function () {
+  if (!this.isModified("password")) {
+    return;
+  }
+
+  if (this.password) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
 });
 
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   if (!this.password) {
-    throw new Error('No password set for this user');
+    throw new Error("No password set for this user");
   }
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-userSchema.methods.getPublicProfile = function() {
+userSchema.methods.getPublicProfile = function () {
   return {
     _id: this._id,
     username: this.username,
@@ -204,4 +211,4 @@ userSchema.methods.getPublicProfile = function() {
   };
 };
 
-module.exports = mongoose.model('User', userSchema);
+module.exports = mongoose.model("User", userSchema);

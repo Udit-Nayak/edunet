@@ -3,6 +3,7 @@ const Post = require("../models/Post");
 const Answer = require("../models/Answer");
 const User = require("../models/User");
 const cacheService = require("../services/cacheService");
+const notificationService = require('../services/notificationService'); 
 
 // @desc    Create a comment on a post or answer
 // @route   POST /api/comments
@@ -45,12 +46,61 @@ exports.createComment = async (req, res) => {
       }
     }
 
+        let postAuthorId = null;
+    let actualPostId = postId;
+
+
     // Verify post or answer exists
     if (postId) {
-      await Post.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
+      const post = await Post.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
+      if (!post) {
+        return res.status(404).json({
+          success: false,
+          message: "Post not found",
+        });
+      }
+      postAuthorId = post.authorId;
+      
+      // Increment view count for commenting on post
+      const isAuthor = post.authorId.toString() === req.user._id.toString();
+      if (!isAuthor) {
+        const viewKey = `view:${postId}:${req.user._id}`;
+        const hasViewed = await cacheService.get(viewKey);
+
+        if (!hasViewed) {
+          post.viewCount += 1;
+          await post.save();
+          await cacheService.set(viewKey, true, 3600);
+          console.log(`👁️ View count incremented (via comment) for post ${postId} by ${req.user.username}`);
+        }
+      }
     }
     if (answerId) {
-      await Answer.findByIdAndUpdate(answerId, { $inc: { commentCount: 1 } });
+      const answer = await Answer.findByIdAndUpdate(answerId, { $inc: { commentCount: 1 } });
+      if (!answer) {
+        return res.status(404).json({
+          success: false,
+          message: "Answer not found",
+        });
+      }
+      actualPostId = answer.postId;
+      
+      // Get the post to increment view count
+      const post = await Post.findById(answer.postId);
+      if (post) {
+        const isAuthor = post.authorId.toString() === req.user._id.toString();
+        if (!isAuthor) {
+          const viewKey = `view:${answer.postId}:${req.user._id}`;
+          const hasViewed = await cacheService.get(viewKey);
+
+          if (!hasViewed) {
+            post.viewCount += 1;
+            await post.save();
+            await cacheService.set(viewKey, true, 3600);
+            console.log(`👁️ View count incremented (via answer comment) for post ${answer.postId} by ${req.user.username}`);
+          }
+        }
+      }
     }
 
     // Create comment
@@ -64,11 +114,31 @@ exports.createComment = async (req, res) => {
       depth,
     });
 
+    if (postId) {
+      const post = await Post.findById(postId);
+      if (post) {
+        await notificationService.notifyNewCommentOnPost(post.authorId, req.user._id, postId, comment._id);
+      }
+    } else if (answerId) {
+      const answer = await Answer.findById(answerId);
+      if (answer) {
+        await notificationService.notifyNewCommentOnAnswer(answer.authorId, req.user._id, answer.postId, answerId, comment._id);
+      }
+    }
+
+    if (parentCommentId) {
+      const parentComment = await Comment.findById(parentCommentId);
+      if (parentComment) {
+        await notificationService.notifyReplyToComment(parentComment.authorId, req.user._id, postId || parentComment.postId, comment._id);
+      }
+    }
+
     await comment.populate("authorId", "username avatar reputation");
 
     // Clear caches
     if (postId) {
       await cacheService.delPattern(`comments:post:${postId}:*`);
+      await cacheService.del(`post:${postId}`);
     }
     if (answerId) {
       await cacheService.delPattern(`comments:answer:${answerId}:*`);
@@ -409,6 +479,13 @@ exports.upvoteComment = async (req, res) => {
       // Add upvote
       comment.upvotedBy.push(userId);
       comment.upvotes += 1;
+
+      await notificationService.notifyCommentUpvote(
+        comment.authorId,
+        userId,
+        comment._id,
+        comment.postId
+      );
     }
 
     await comment.save();

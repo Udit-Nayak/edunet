@@ -13,6 +13,7 @@ import { FiEye, FiCheckCircle, FiEdit, FiTrash2, FiFile } from "react-icons/fi";
 import toast from "react-hot-toast";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import MediaViewer from "../components/common/MediaViewer";
+import SaveButton from "../components/post/SaveButton";
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -33,7 +34,7 @@ export default function PostDetail() {
   const fetchPost = async () => {
     try {
       setLoading(true);
-      const response = await postAPI.getPostById(id);
+      const response = await postAPI.getPostById(id, { incrementView: true });
       setPost(response.data.post);
       setError(null);
     } catch (err) {
@@ -242,6 +243,17 @@ export default function PostDetail() {
                 onDownvote={postAPI.downvotePost}
                 size="lg"
               />
+
+              <SaveButton
+                postId={post._id}
+                initialSaved={post.isSaved}
+                showCount={isAuthor}
+                saveCount={post.saveCount}
+                onSaveChange={(saved, count) => {
+                  setPost({ ...post, isSaved: saved, saveCount: count });
+                }}
+              />
+
               <div className="text-sm text-gray-600">
                 {formatNumber(post.answerCount || 0)} answer
                 {post.answerCount !== 1 ? "s" : ""}

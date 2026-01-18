@@ -107,11 +107,24 @@ const postSchema = new mongoose.Schema(
       min: 0,
     },
 
-    commentCount:{
-      type:Number, 
-      default:0,
-      min:0,
+    commentCount: {
+      type: Number,
+      default: 0,
+      min: 0,
     },
+
+    saveCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    savedBy: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+      },
+    ],
 
     // Metadata
     isEdited: {
@@ -125,7 +138,7 @@ const postSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 postSchema.index({ authorId: 1, createdAt: -1 });
@@ -139,8 +152,9 @@ postSchema.virtual("netVotes").get(function () {
 });
 
 // Method to get public post data
-postSchema.methods.getPublicData = function () {
-  return {
+// Update the getPublicData method
+postSchema.methods.getPublicData = function (requestingUserId = null) {
+  const data = {
     _id: this._id,
     type: this.type,
     title: this.title,
@@ -161,6 +175,13 @@ postSchema.methods.getPublicData = function () {
     createdAt: this.createdAt,
     updatedAt: this.updatedAt,
   };
+
+  // Only include saveCount if requesting user is the author
+  if (requestingUserId && this.authorId.toString() === requestingUserId.toString()) {
+    data.saveCount = this.saveCount;
+  }
+
+  return data;
 };
 
 module.exports = mongoose.model("Post", postSchema);

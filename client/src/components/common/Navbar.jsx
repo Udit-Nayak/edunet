@@ -6,6 +6,7 @@ import { logout as logoutAction } from '../../redux/slices/authSlice';
 import toast from 'react-hot-toast';
 import { FiHome, FiPlusCircle, FiUser, FiLogOut, FiMenu } from 'react-icons/fi';
 import { useState } from 'react';
+import NotificationDropdown from './NotificationDropdown';
 
 export default function Navbar() {
   const { user, isAuthenticated } = useAuth();
@@ -63,6 +64,9 @@ export default function Navbar() {
                   <FiPlusCircle className="w-4 h-4" />
                   <span>Create</span>
                 </Link>
+
+                {/* Notification Bell */}
+                <NotificationDropdown />
 
                 <Link
                   to="/dashboard"

@@ -18,6 +18,7 @@ import { useAuth } from "../../hooks/useAuth";
 import ConfirmDialog from "../common/ConfirmDialog";
 import toast from "react-hot-toast";
 import MediaViewer from "../common/MediaViewer";
+import SaveButton from './SaveButton';
 
 export default function PostCard({ post, onDelete }) {
   const navigate = useNavigate();
@@ -262,6 +263,14 @@ export default function PostCard({ post, onDelete }) {
               onDownvote={postAPI.downvotePost}
               size="md"
             />
+
+            <SaveButton 
+  postId={post._id}
+  initialSaved={post.isSaved}
+  showCount={isAuthor}
+  saveCount={post.saveCount}
+/>
+
 
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               <Link
