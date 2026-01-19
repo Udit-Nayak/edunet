@@ -10,7 +10,7 @@ export default function Dashboard() {
   const { user } = useAuth();
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("all"); // all, question, note, article
+  const [activeTab, setActiveTab] = useState("all");
 
   useEffect(() => {
     if (user?._id) {
@@ -22,39 +22,35 @@ export default function Dashboard() {
   const fetchUserPosts = async () => {
     try {
       setLoading(true);
-          console.log('📊 Active Tab:', activeTab);
-    console.log('👤 Current User:', user?.username, user?._id);
 
-      if (activeTab === 'saved') {
-      // Fetch saved posts for the CURRENT logged-in user
-      console.log('📚 Fetching saved posts...');
-      const response = await postAPI.getSavedPosts({
-        page: 1,
-        limit: 20,
-      });
-      console.log('✅ Saved posts response:', response.data);
-      setPosts(response.data.posts);
-    } else {
-      // Fetch posts created by the user
-      console.log('📝 Fetching user posts...');
-      const params = {
-        page: 1,
-        limit: 20,
-      };
-      
-      if (activeTab !== 'all') {
-        params.type = activeTab;
+      if (activeTab === "saved") {
+        const response = await postAPI.getSavedPosts({
+          page: 1,
+          limit: 20,
+        });
+        setPosts(response.data.posts);
+      } else if (activeTab === "drafts") {
+        // Fetch drafts
+        const response = await postAPI.getMyDrafts();
+        setPosts(response.data.drafts);
+      } else {
+        const params = {
+          page: 1,
+          limit: 20,
+        };
+
+        if (activeTab !== "all") {
+          params.type = activeTab;
+        }
+
+        const response = await postAPI.getUserPosts(user._id, params);
+        setPosts(response.data.posts);
       }
-
-      const response = await postAPI.getUserPosts(user._id, params);
-      console.log('✅ User posts response:', response.data);
-      setPosts(response.data.posts);
+    } catch (error) {
+      console.error("Failed to fetch posts:", error);
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('❌ Failed to fetch posts:', error);
-  } finally {
-    setLoading(false);
-  }
   };
 
   const handlePostDelete = (postId) => {
@@ -243,6 +239,17 @@ export default function Dashboard() {
                 }`}
               >
                 📚 Saved Posts
+              </button>
+
+              <button
+                onClick={() => setActiveTab("drafts")}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
+                  activeTab === "drafts"
+                    ? "bg-primary-600 text-white"
+                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                }`}
+              >
+                📝 Drafts
               </button>
             </div>
 

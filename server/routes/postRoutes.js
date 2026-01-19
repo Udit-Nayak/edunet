@@ -13,6 +13,10 @@ const {
   savePost,
   getSavedPosts,
   checkPostSaved,
+  getMyDrafts,
+  getDraftById,
+  cleanupOldDrafts,
+
 } = require('../controllers/postController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -50,11 +54,14 @@ const optionalAuth = async (req, res, next) => {
 router.get('/',optionalAuth ,getPosts);
 router.get('/tag/:tag',optionalAuth, getPostsByTag);
 router.get('/user/:userId',optionalAuth, getUserPosts);
+router.get('/drafts/my-drafts', protect, getMyDrafts);
+router.get('/drafts/:id', protect, getDraftById);
+router.delete('/drafts/cleanup', protect, cleanupOldDrafts);
 
 // Protected routes - IMPORTANT: Put specific routes BEFORE dynamic :id route
-router.get('/saved', protect, getSavedPosts); // THIS MUST BE BEFORE /:id
+router.get('/saved', protect, getSavedPosts); 
 router.get('/:id/is-saved', protect, checkPostSaved);
-router.get('/:id',optionalAuth, getPostById); // This should be AFTER /saved
+router.get('/:id',optionalAuth, getPostById);
 
 // Other protected routes
 router.post('/', protect, createPost);

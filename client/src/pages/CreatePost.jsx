@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState  } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { postAPI } from '../services/api';
 import Navbar from '../components/common/Navbar';
 import RichTextEditor from '../components/post/RichTextEditor';
 import TagInput from '../components/post/TagInput';
 import FileUpload from '../components/common/FileUpload';
+import DraftsList from '../components/post/DraftsList';
 import toast from 'react-hot-toast';
-import { FiX, FiFile } from 'react-icons/fi';
+import { FiX, FiFile , FiAlertCircle } from 'react-icons/fi';
 
 export default function CreatePost() {
   const [formData, setFormData] = useState({
@@ -18,6 +19,7 @@ export default function CreatePost() {
     status: 'published',
   });
   const [loading, setLoading] = useState(false);
+    const [loadedDraftId, setLoadedDraftId] = useState(null);
   const navigate = useNavigate();
 
   const handleChange = (field, value) => {
@@ -37,6 +39,34 @@ export default function CreatePost() {
       ...formData,
       attachments: formData.attachments.filter((_, i) => i !== index),
     });
+  };
+
+  const handleLoadDraft = (draft) => {
+    if (formData.title || formData.content) {
+      if (!window.confirm('Loading this draft will replace your current work. Continue?')) {
+        return;
+      }
+    }
+
+    setFormData({
+      type: draft.type,
+      title: draft.title,
+      content: draft.content,
+      tags: draft.tags || [],
+      attachments: draft.attachments || [],
+      status: 'draft',
+    });
+    setLoadedDraftId(draft._id);
+    
+    toast.success(`Draft loaded: ${draft.title || 'Untitled'}`);
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleDeleteDraft = (draftId) => {
+    if (loadedDraftId === draftId) {
+      setLoadedDraftId(null);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -60,8 +90,20 @@ export default function CreatePost() {
     setLoading(true);
 
     try {
-      const response = await postAPI.createPost(formData);
-      toast.success('Post created successfully!');
+      let response;
+            if (loadedDraftId) {
+        response = await postAPI.updatePost(loadedDraftId, {
+          ...formData,
+          status: 'published',
+        });
+      } else {
+        response = await postAPI.createPost({
+          ...formData,
+          status: 'published',
+        });
+      }
+      
+      toast.success('Post published successfully!');
       navigate(`/post/${response.data.post._id}`);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to create post');
@@ -71,14 +113,33 @@ export default function CreatePost() {
   };
 
   const handleSaveDraft = async () => {
+    if (!formData.title.trim() && !formData.content.trim()) {
+      toast.error('Please add a title or content before saving as draft');
+      return;
+    }
+
     setLoading(true);
+    
     try {
-      const draftData = { ...formData, status: 'draft' };
-      await postAPI.createPost(draftData);
-      toast.success('Draft saved!');
-      navigate('/dashboard');
-    } catch{
-      toast.error('Failed to save draft');
+      let response;
+      
+      // If editing an existing draft, update it; otherwise create new
+      if (loadedDraftId) {
+        response = await postAPI.updatePost(loadedDraftId, {
+          ...formData,
+          status: 'draft',
+        });
+        toast.success('Draft updated!');
+      } else {
+        response = await postAPI.createPost({
+          ...formData,
+          status: 'draft',
+        });
+        setLoadedDraftId(response.data.post._id);
+        toast.success('Draft saved! It will be deleted automatically after 3 days.');
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to save draft');
     } finally {
       setLoading(false);
     }
@@ -93,6 +154,27 @@ export default function CreatePost() {
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Post</h1>
           <p className="text-gray-600">Share your knowledge with the community</p>
         </div>
+
+        {/* Drafts List */}
+        <DraftsList 
+          onLoadDraft={handleLoadDraft}
+          onDeleteDraft={handleDeleteDraft}
+        />
+
+        {/* Draft Notice */}
+        {loadedDraftId && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6 flex items-start space-x-3">
+            <FiAlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+              <p className="text-sm font-medium text-yellow-900">
+                You're editing a draft
+              </p>
+              <p className="text-sm text-yellow-700 mt-1">
+                This draft will be automatically deleted 3 days after creation if not published.
+              </p>
+            </div>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Post Type */}

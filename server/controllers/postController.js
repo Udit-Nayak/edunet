@@ -150,13 +150,12 @@ exports.getPosts = async (req, res) => {
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
+      .select('+upvotes +downvotes +upvotedBy +downvotedBy')
       .populate("authorId", "username avatar reputation")
       .lean();
 
-    // Add isSaved status for authenticated users
-    if (req.user) {
-      posts = await addSavedStatusToPosts(posts, req.user._id);
-    }
+    posts = await addSavedStatusToPosts(posts, req.user._id);
+    
 
     const total = await Post.countDocuments(query);
 
@@ -196,15 +195,13 @@ exports.getPostById = async (req, res) => {
     let post;
 
     if (cachedPost) {
-      post = await Post.findById(id).populate(
-        "authorId",
-        "username avatar reputation bio",
-      );
+      post = await Post.findById(id)
+        .select('+upvotes +downvotes +upvotedBy +downvotedBy')
+        .populate("authorId", "username avatar reputation bio");
     } else {
-      post = await Post.findById(id).populate(
-        "authorId",
-        "username avatar reputation bio",
-      );
+      post = await Post.findById(id)
+        .select('+upvotes +downvotes +upvotedBy +downvotedBy')
+        .populate("authorId", "username avatar reputation bio");
 
       if (!post) {
         return res.status(404).json({
@@ -221,8 +218,6 @@ exports.getPostById = async (req, res) => {
       });
     }
 
-    // Only increment view count when explicitly requested from the post detail page
-    // AND user is not the author
     const isAuthor =
       req.user && req.user._id.toString() === post.authorId._id.toString();
 
@@ -245,14 +240,22 @@ exports.getPostById = async (req, res) => {
       }
     }
 
-const postData = post.getPublicData(req.user ? req.user._id : null);
+    let postData = post.toObject();
+    postData.netVotes = (post.upvotes || 0) - (post.downvotes || 0);
 
     // Cache for 5 minutes
 
     if (req.user) {
-  const user = await User.findById(req.user._id);
-  postData.isSaved = user.savedPosts.includes(id);
+      const user = await User.findById(req.user._id);
+      postData.isSaved = user.savedPosts.includes(id);
+      postData.userVote = post.upvotedBy.includes(req.user._id) ? 'upvote' :
+                          post.downvotedBy.includes(req.user._id) ? 'downvote' : null;
 }
+
+if (req.user && post.authorId._id.toString() === req.user._id.toString()) {
+      postData.saveCount = post.saveCount;
+    }
+
 
     await cacheService.set(cacheKey, postData, 300);
 
@@ -607,13 +610,12 @@ exports.getPostsByTag = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
+      .select('+upvotes +downvotes +upvotedBy +downvotedBy')
       .populate("authorId", "username avatar reputation")
       .lean();
 
-    // Add isSaved status for authenticated users
-    if (req.user) {
-      posts = await addSavedStatusToPosts(posts, req.user._id);
-    }
+    // Add isSaved status and vote data for authenticated users
+    posts = await addSavedStatusToPosts(posts, req.user?._id);
 
     const total = await Post.countDocuments({ tags: tag, status: "published" });
 
@@ -641,7 +643,6 @@ exports.getPostsByTag = async (req, res) => {
     });
   }
 };
-
 // @route   GET /api/posts/user/:userId
 exports.getUserPosts = async (req, res) => {
   try {
@@ -657,13 +658,12 @@ exports.getUserPosts = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
+      .select('+upvotes +downvotes +upvotedBy +downvotedBy')
       .populate("authorId", "username avatar reputation")
       .lean();
 
-    // Add isSaved status for authenticated users
-    if (req.user) {
-      posts = await addSavedStatusToPosts(posts, req.user._id);
-    }
+    // Add isSaved status and vote data for authenticated users
+    posts = await addSavedStatusToPosts(posts, req.user?._id);
 
     const total = await Post.countDocuments(query);
 
@@ -686,7 +686,6 @@ exports.getUserPosts = async (req, res) => {
     });
   }
 };
-
 
 // @route POST /api/posts/:id/save
 exports.savePost= async (req, res)=>{
@@ -779,6 +778,7 @@ exports.getSavedPosts = async (req, res) => {
     let posts = await Post.find({
       _id: { $in: savedPostIds },
     })
+      .select('+upvotes +downvotes +upvotedBy +downvotedBy')
       .populate('authorId', 'username avatar reputation')
       .lean();
 
@@ -787,15 +787,18 @@ exports.getSavedPosts = async (req, res) => {
       posts.find(post => post._id.toString() === id.toString())
     ).filter(Boolean);
 
-    // Add isSaved flag (should always be true for saved posts)
-    const postsWithSavedStatus = sortedPosts.map(post => ({
+    // Add computed fields
+    const postsWithData = sortedPosts.map(post => ({
       ...post,
-      isSaved: true
+      netVotes: (post.upvotes || 0) - (post.downvotes || 0),
+      isSaved: true,
+      userVote: post.upvotedBy?.includes(userId.toString()) ? 'upvote' :
+                post.downvotedBy?.includes(userId.toString()) ? 'downvote' : null,
     }));
 
     res.status(200).json({
       success: true,
-      posts: postsWithSavedStatus,
+      posts: postsWithData,
       pagination: {
         currentPage: parseInt(page),
         totalPages: Math.ceil(total / parseInt(limit)),
@@ -845,13 +848,143 @@ exports.checkPostSaved = async (req, res) => {
 };
 
 const addSavedStatusToPosts = async (posts, userId) => {
-  if (!userId) return posts;
+  if (!userId) {
+    return posts.map(post => ({
+      ...post,
+      netVotes: (post.upvotes || 0) - (post.downvotes || 0),
+      isSaved: false,
+    }));
+  }
 
   const user = await User.findById(userId);
-  if (!user) return posts;
+  if (!user) {
+    return posts.map(post => ({
+      ...post,
+      netVotes: (post.upvotes || 0) - (post.downvotes || 0),
+      isSaved: false,
+    }));
+  }
 
   return posts.map(post => ({
     ...post,
-    isSaved: user.savedPosts.some(savedId => savedId.toString() === post._id.toString())
+    netVotes: (post.upvotes || 0) - (post.downvotes || 0),
+    isSaved: user.savedPosts.some(savedId => savedId.toString() === post._id.toString()),
+    userVote: post.upvotedBy?.includes(userId.toString()) ? 'upvote' : 
+              post.downvotedBy?.includes(userId.toString()) ? 'downvote' : null,
   }));
+};
+
+// @route   GET /api/posts/drafts/my-drafts
+exports.getMyDrafts = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    // Find drafts for this user
+    const drafts = await Post.find({
+      authorId: userId,
+      status: 'draft',
+    })
+      .sort({ updatedAt: -1 })
+      .populate('authorId', 'username avatar')
+      .lean();
+
+    // Calculate days remaining for each draft
+    const draftsWithExpiry = drafts.map(draft => {
+      const draftAge = Date.now() - new Date(draft.draftCreatedAt || draft.createdAt).getTime();
+      const daysRemaining = Math.max(0, 3 - Math.floor(draftAge / (1000 * 60 * 60 * 24)));
+      
+      return {
+        ...draft,
+        daysRemaining,
+        expiresAt: new Date(new Date(draft.draftCreatedAt || draft.createdAt).getTime() + 3 * 24 * 60 * 60 * 1000),
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      drafts: draftsWithExpiry,
+      count: draftsWithExpiry.length,
+    });
+  } catch (error) {
+    console.error('Get drafts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching drafts',
+      error: error.message,
+    });
+  }
+};
+
+// @route   GET /api/posts/drafts/:id
+exports.getDraftById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user._id;
+
+    const draft = await Post.findOne({
+      _id: id,
+      authorId: userId,
+      status: 'draft',
+    }).populate('authorId', 'username avatar');
+
+    if (!draft) {
+      return res.status(404).json({
+        success: false,
+        message: 'Draft not found or you do not have permission to access it',
+      });
+    }
+
+    // Calculate days remaining
+    const draftAge = Date.now() - new Date(draft.draftCreatedAt || draft.createdAt).getTime();
+    const daysRemaining = Math.max(0, 3 - Math.floor(draftAge / (1000 * 60 * 60 * 24)));
+
+    res.status(200).json({
+      success: true,
+      draft: {
+        ...draft.toObject(),
+        daysRemaining,
+        expiresAt: new Date(new Date(draft.draftCreatedAt || draft.createdAt).getTime() + 3 * 24 * 60 * 60 * 1000),
+      },
+    });
+  } catch (error) {
+    console.error('Get draft by ID error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching draft',
+      error: error.message,
+    });
+  }
+};
+
+// @route   DELETE /api/posts/drafts/cleanup
+exports.cleanupOldDrafts = async (req, res) => {
+  try {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+    const result = await Post.deleteMany({
+      status: 'draft',
+      $or: [
+        { draftCreatedAt: { $lte: threeDaysAgo } },
+        { 
+          draftCreatedAt: null,
+          createdAt: { $lte: threeDaysAgo }
+        }
+      ],
+    });
+
+    console.log(`🗑️  Cleaned up ${result.deletedCount} old drafts`);
+
+    res.status(200).json({
+      success: true,
+      message: `Deleted ${result.deletedCount} old drafts`,
+      deletedCount: result.deletedCount,
+    });
+  } catch (error) {
+    console.error('Cleanup drafts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error cleaning up drafts',
+      error: error.message,
+    });
+  }
 };

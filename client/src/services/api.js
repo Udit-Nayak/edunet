@@ -46,7 +46,9 @@ export const postAPI = {
   savePost: (id) => API.post(`/posts/${id}/save`),
   getSavedPosts: (params) => API.get('/posts/saved', { params }),
   checkPostSaved: (id) => API.get(`/posts/${id}/is-saved`),
-
+  getMyDrafts: () => API.get('/posts/drafts/my-drafts'),
+  getDraftById: (id) => API.get(`/posts/drafts/${id}`),
+  cleanupOldDrafts: () => API.delete('/posts/drafts/cleanup'),
 };
 
 export const answerAPI = {

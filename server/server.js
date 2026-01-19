@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const connectDB = require('./config/database');
+const { scheduleDraftCleanup } = require('./jobs/draftCleanup');
 
 require('./config/redis');
 require('./config/firebase');
@@ -12,6 +13,7 @@ require('./config/firebase');
 const app = express();
 
 connectDB();
+scheduleDraftCleanup();
 
 app.use(helmet()); 
 app.use(cors({

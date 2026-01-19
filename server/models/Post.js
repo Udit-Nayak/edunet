@@ -95,6 +95,11 @@ const postSchema = new mongoose.Schema(
       default: "published",
     },
 
+    draftCreatedAt: {
+  type: Date,
+  default: null,
+},
+
     // For questions only
     acceptedAnswerId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -151,6 +156,16 @@ postSchema.virtual("netVotes").get(function () {
   return this.upvotes - this.downvotes;
 });
 
+postSchema.pre('save', async function() {
+  if (this.isModified('status')) {
+    if (this.status === 'draft' && !this.draftCreatedAt) {
+      this.draftCreatedAt = new Date();
+    } else if (this.status === 'published') {
+      this.draftCreatedAt = null;
+    }
+  }
+});
+
 // Method to get public post data
 // Update the getPublicData method
 postSchema.methods.getPublicData = function (requestingUserId = null) {
@@ -183,5 +198,7 @@ postSchema.methods.getPublicData = function (requestingUserId = null) {
 
   return data;
 };
+
+
 
 module.exports = mongoose.model("Post", postSchema);
