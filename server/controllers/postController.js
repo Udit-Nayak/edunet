@@ -6,6 +6,19 @@ const storageService = require("../services/storageService");
 const reputationService = require("../services/reputationService");
 const notificationService = require("../services/notificationService");
 
+const clearSearchCaches = async () => {
+  try {
+    // Clear all search caches
+    await cacheService.delPattern("search:*");
+    await cacheService.delPattern("suggestions:*");
+    await cacheService.delPattern("trending:*");
+    await cacheService.delPattern("popular:*");
+    console.log("✅ Search caches cleared");
+  } catch (error) {
+    console.error("Error clearing search caches:", error);
+  }
+};
+
 // @route   POST /api/posts
 exports.createPost = async (req, res) => {
   try {
@@ -22,14 +35,12 @@ exports.createPost = async (req, res) => {
       const supabaseUrl = process.env.SUPABASE_URL;
 
       const validAttachments = attachments.every((attachment) => {
-        // Check basic structure
         const hasRequiredFields =
           attachment.url &&
           attachment.name &&
           attachment.type &&
           ["image", "pdf"].includes(attachment.type);
 
-        // Check if URL is from Supabase (if SUPABASE_URL is set)
         const isValidUrl = supabaseUrl
           ? attachment.url.startsWith(
               `${supabaseUrl}/storage/v1/object/public/`,
@@ -46,7 +57,6 @@ exports.createPost = async (req, res) => {
         });
       }
 
-      // Verify files belong to the user
       const userId = req.user._id.toString();
       const userOwnsAllFiles = attachments.every((attachment) => {
         const filePath = storageService.extractFilePathFromUrl(attachment.url);
@@ -74,6 +84,8 @@ exports.createPost = async (req, res) => {
     await post.populate("authorId", "username avatar reputation");
 
     await cacheService.delPattern("posts:*");
+    // Clear search caches when new post is created
+    await clearSearchCaches();
 
     const userPostCount = await Post.countDocuments({
       authorId: req.user._id,
@@ -82,12 +94,13 @@ exports.createPost = async (req, res) => {
 
     await reputationService.checkPostMilestone(req.user._id, userPostCount);
 
-    (res.status(201).json({
+    res.status(201).json({
       success: true,
       message: "Post created successfully",
       post: post.getPublicData(),
-    }),
-      console.log(`✅ New ${type} created by ${req.user.username}`));
+    });
+
+    console.log(`✅ New ${type} created by ${req.user.username}`);
   } catch (error) {
     console.error("Created post error:", error);
     res.status(500).json({
@@ -137,7 +150,7 @@ exports.getPosts = async (req, res) => {
         sort = { createdAt: -1 };
     }
 
-    const cacheKey = `posts:${JSON.stringify(query)}:${sortBy}:${page}:${limit}:${req.user?._id || 'guest'}`;
+    const cacheKey = `posts:${JSON.stringify(query)}:${sortBy}:${page}:${limit}:${req.user?._id || "guest"}`;
     const cachedData = await cacheService.get(cacheKey);
 
     if (cachedData) {
@@ -150,12 +163,11 @@ exports.getPosts = async (req, res) => {
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit))
-      .select('+upvotes +downvotes +upvotedBy +downvotedBy')
+      .select("+upvotes +downvotes +upvotedBy +downvotedBy")
       .populate("authorId", "username avatar reputation")
       .lean();
 
     posts = await addSavedStatusToPosts(posts, req.user._id);
-    
 
     const total = await Post.countDocuments(query);
 
@@ -196,11 +208,11 @@ exports.getPostById = async (req, res) => {
 
     if (cachedPost) {
       post = await Post.findById(id)
-        .select('+upvotes +downvotes +upvotedBy +downvotedBy')
+        .select("+upvotes +downvotes +upvotedBy +downvotedBy")
         .populate("authorId", "username avatar reputation bio");
     } else {
       post = await Post.findById(id)
-        .select('+upvotes +downvotes +upvotedBy +downvotedBy')
+        .select("+upvotes +downvotes +upvotedBy +downvotedBy")
         .populate("authorId", "username avatar reputation bio");
 
       if (!post) {
@@ -248,14 +260,16 @@ exports.getPostById = async (req, res) => {
     if (req.user) {
       const user = await User.findById(req.user._id);
       postData.isSaved = user.savedPosts.includes(id);
-      postData.userVote = post.upvotedBy.includes(req.user._id) ? 'upvote' :
-                          post.downvotedBy.includes(req.user._id) ? 'downvote' : null;
-}
-
-if (req.user && post.authorId._id.toString() === req.user._id.toString()) {
-      postData.saveCount = post.saveCount;
+      postData.userVote = post.upvotedBy.includes(req.user._id)
+        ? "upvote"
+        : post.downvotedBy.includes(req.user._id)
+          ? "downvote"
+          : null;
     }
 
+    if (req.user && post.authorId._id.toString() === req.user._id.toString()) {
+      postData.saveCount = post.saveCount;
+    }
 
     await cacheService.set(cacheKey, postData, 300);
 
@@ -288,7 +302,6 @@ exports.updatePost = async (req, res) => {
       });
     }
 
-    // Check if user is the author
     if (post.authorId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -296,7 +309,6 @@ exports.updatePost = async (req, res) => {
       });
     }
 
-    // Update fields
     if (title) post.title = title;
     if (content) post.content = content;
     if (tags) post.tags = tags;
@@ -309,9 +321,10 @@ exports.updatePost = async (req, res) => {
     await post.save();
     await post.populate("authorId", "username avatar reputation");
 
-    // Clear caches
     await cacheService.del(`post:${id}`);
     await cacheService.delPattern("posts:*");
+    // Clear search caches when post is updated
+    await clearSearchCaches();
 
     res.status(200).json({
       success: true,
@@ -344,7 +357,6 @@ exports.deletePost = async (req, res) => {
       });
     }
 
-    // Check if user is the author
     if (post.authorId.toString() !== req.user._id.toString()) {
       return res.status(403).json({
         success: false,
@@ -367,20 +379,18 @@ exports.deletePost = async (req, res) => {
           );
         } catch (error) {
           console.error("Error deleting attachments:", error);
-          // Continue with post deletion even if file deletion fails
         }
       }
     }
-    // Delete all answers associated with this post
+    
     await Answer.deleteMany({ postId: id });
-
-    // Delete the post
     await post.deleteOne();
 
-    // Clear caches
     await cacheService.del(`post:${id}`);
     await cacheService.delPattern("posts:*");
     await cacheService.delPattern(`answers:post:${id}:*`);
+    // Clear search caches when post is deleted
+    await clearSearchCaches();
 
     res.status(200).json({
       success: true,
@@ -594,7 +604,7 @@ exports.getPostsByTag = async (req, res) => {
     const { tag } = req.params;
     const { page = 1, limit = 10 } = req.query;
 
-    const cacheKey = `posts:tag:${tag}:${page}:${limit}:${req.user?._id || 'guest'}`;
+    const cacheKey = `posts:tag:${tag}:${page}:${limit}:${req.user?._id || "guest"}`;
     const cachedData = await cacheService.get(cacheKey);
 
     if (cachedData) {
@@ -610,7 +620,7 @@ exports.getPostsByTag = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .select('+upvotes +downvotes +upvotedBy +downvotedBy')
+      .select("+upvotes +downvotes +upvotedBy +downvotedBy")
       .populate("authorId", "username avatar reputation")
       .lean();
 
@@ -658,7 +668,7 @@ exports.getUserPosts = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit))
-      .select('+upvotes +downvotes +upvotedBy +downvotedBy')
+      .select("+upvotes +downvotes +upvotedBy +downvotedBy")
       .populate("authorId", "username avatar reputation")
       .lean();
 
@@ -688,45 +698,44 @@ exports.getUserPosts = async (req, res) => {
 };
 
 // @route POST /api/posts/:id/save
-exports.savePost= async (req, res)=>{
+exports.savePost = async (req, res) => {
   try {
-    const {id}=req.params;
-    const userId=req.user._id;
+    const { id } = req.params;
+    const userId = req.user._id;
 
-    const post=await Post.findById(id);
+    const post = await Post.findById(id);
 
-    if(!post){
+    if (!post) {
       return res.status(404).json({
-        success:false,
-        message:'Post not found',
+        success: false,
+        message: "Post not found",
       });
     }
 
-    const user= await User.findById(userId);
-    const alreadySaved= user.savedPosts.includes(id);
+    const user = await User.findById(userId);
+    const alreadySaved = user.savedPosts.includes(id);
 
-    if(alreadySaved){
-      user.savedPosts=user.savedPosts.filter(
-        (postId)=>postId.toString()!== id.toString()
+    if (alreadySaved) {
+      user.savedPosts = user.savedPosts.filter(
+        (postId) => postId.toString() !== id.toString(),
       );
-      post.savedBy=post.savedBy.filter((uid)=>uid.toString());
-      post.saveCount=Math.max(0, post.saveCount-1);
+      post.savedBy = post.savedBy.filter((uid) => uid.toString());
+      post.saveCount = Math.max(0, post.saveCount - 1);
 
       await user.save();
       await post.save();
 
       await cacheService.del(`post:${id}`);
-      await cacheService.delPattern('posts:*');
+      await cacheService.delPattern("posts:*");
       await cacheService.del(`user:${userId}`);
 
       return res.status(200).json({
         success: true,
-        message: 'Post unsaved',
+        message: "Post unsaved",
         saved: false,
         saveCount: post.saveCount,
       });
-    }
-    else{
+    } else {
       user.savedPosts.push(id);
       post.savedBy.push(userId);
       post.saveCount += 1;
@@ -736,25 +745,25 @@ exports.savePost= async (req, res)=>{
 
       // Clear caches
       await cacheService.del(`post:${id}`);
-      await cacheService.delPattern('posts:*');
+      await cacheService.delPattern("posts:*");
       await cacheService.del(`user:${userId}`);
 
       return res.status(200).json({
         success: true,
-        message: 'Post saved',
+        message: "Post saved",
         saved: true,
         saveCount: post.saveCount,
       });
     }
   } catch (error) {
-    console.error('Save post error:', error);
+    console.error("Save post error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error saving post',
+      message: "Error saving post",
       error: error.message,
     });
   }
-}
+};
 
 // @route   GET /api/posts/saved
 exports.getSavedPosts = async (req, res) => {
@@ -767,7 +776,7 @@ exports.getSavedPosts = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found',
+        message: "User not found",
       });
     }
 
@@ -778,22 +787,25 @@ exports.getSavedPosts = async (req, res) => {
     let posts = await Post.find({
       _id: { $in: savedPostIds },
     })
-      .select('+upvotes +downvotes +upvotedBy +downvotedBy')
-      .populate('authorId', 'username avatar reputation')
+      .select("+upvotes +downvotes +upvotedBy +downvotedBy")
+      .populate("authorId", "username avatar reputation")
       .lean();
 
     // Sort posts by the order they appear in savedPosts
-    const sortedPosts = savedPostIds.map(id => 
-      posts.find(post => post._id.toString() === id.toString())
-    ).filter(Boolean);
+    const sortedPosts = savedPostIds
+      .map((id) => posts.find((post) => post._id.toString() === id.toString()))
+      .filter(Boolean);
 
     // Add computed fields
-    const postsWithData = sortedPosts.map(post => ({
+    const postsWithData = sortedPosts.map((post) => ({
       ...post,
       netVotes: (post.upvotes || 0) - (post.downvotes || 0),
       isSaved: true,
-      userVote: post.upvotedBy?.includes(userId.toString()) ? 'upvote' :
-                post.downvotedBy?.includes(userId.toString()) ? 'downvote' : null,
+      userVote: post.upvotedBy?.includes(userId.toString())
+        ? "upvote"
+        : post.downvotedBy?.includes(userId.toString())
+          ? "downvote"
+          : null,
     }));
 
     res.status(200).json({
@@ -807,10 +819,10 @@ exports.getSavedPosts = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error('Get saved posts error:', error);
+    console.error("Get saved posts error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching saved posts',
+      message: "Error fetching saved posts",
       error: error.message,
     });
   }
@@ -827,7 +839,7 @@ exports.checkPostSaved = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: 'User not found',
+        message: "User not found",
       });
     }
 
@@ -838,10 +850,10 @@ exports.checkPostSaved = async (req, res) => {
       saved: isSaved,
     });
   } catch (error) {
-    console.error('Check post saved error:', error);
+    console.error("Check post saved error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error checking saved status',
+      message: "Error checking saved status",
       error: error.message,
     });
   }
@@ -849,7 +861,7 @@ exports.checkPostSaved = async (req, res) => {
 
 const addSavedStatusToPosts = async (posts, userId) => {
   if (!userId) {
-    return posts.map(post => ({
+    return posts.map((post) => ({
       ...post,
       netVotes: (post.upvotes || 0) - (post.downvotes || 0),
       isSaved: false,
@@ -858,19 +870,24 @@ const addSavedStatusToPosts = async (posts, userId) => {
 
   const user = await User.findById(userId);
   if (!user) {
-    return posts.map(post => ({
+    return posts.map((post) => ({
       ...post,
       netVotes: (post.upvotes || 0) - (post.downvotes || 0),
       isSaved: false,
     }));
   }
 
-  return posts.map(post => ({
+  return posts.map((post) => ({
     ...post,
     netVotes: (post.upvotes || 0) - (post.downvotes || 0),
-    isSaved: user.savedPosts.some(savedId => savedId.toString() === post._id.toString()),
-    userVote: post.upvotedBy?.includes(userId.toString()) ? 'upvote' : 
-              post.downvotedBy?.includes(userId.toString()) ? 'downvote' : null,
+    isSaved: user.savedPosts.some(
+      (savedId) => savedId.toString() === post._id.toString(),
+    ),
+    userVote: post.upvotedBy?.includes(userId.toString())
+      ? "upvote"
+      : post.downvotedBy?.includes(userId.toString())
+        ? "downvote"
+        : null,
   }));
 };
 
@@ -882,21 +899,29 @@ exports.getMyDrafts = async (req, res) => {
     // Find drafts for this user
     const drafts = await Post.find({
       authorId: userId,
-      status: 'draft',
+      status: "draft",
     })
       .sort({ updatedAt: -1 })
-      .populate('authorId', 'username avatar')
+      .populate("authorId", "username avatar")
       .lean();
 
     // Calculate days remaining for each draft
-    const draftsWithExpiry = drafts.map(draft => {
-      const draftAge = Date.now() - new Date(draft.draftCreatedAt || draft.createdAt).getTime();
-      const daysRemaining = Math.max(0, 3 - Math.floor(draftAge / (1000 * 60 * 60 * 24)));
-      
+    const draftsWithExpiry = drafts.map((draft) => {
+      const draftAge =
+        Date.now() -
+        new Date(draft.draftCreatedAt || draft.createdAt).getTime();
+      const daysRemaining = Math.max(
+        0,
+        3 - Math.floor(draftAge / (1000 * 60 * 60 * 24)),
+      );
+
       return {
         ...draft,
         daysRemaining,
-        expiresAt: new Date(new Date(draft.draftCreatedAt || draft.createdAt).getTime() + 3 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(
+          new Date(draft.draftCreatedAt || draft.createdAt).getTime() +
+            3 * 24 * 60 * 60 * 1000,
+        ),
       };
     });
 
@@ -906,10 +931,10 @@ exports.getMyDrafts = async (req, res) => {
       count: draftsWithExpiry.length,
     });
   } catch (error) {
-    console.error('Get drafts error:', error);
+    console.error("Get drafts error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching drafts',
+      message: "Error fetching drafts",
       error: error.message,
     });
   }
@@ -924,33 +949,40 @@ exports.getDraftById = async (req, res) => {
     const draft = await Post.findOne({
       _id: id,
       authorId: userId,
-      status: 'draft',
-    }).populate('authorId', 'username avatar');
+      status: "draft",
+    }).populate("authorId", "username avatar");
 
     if (!draft) {
       return res.status(404).json({
         success: false,
-        message: 'Draft not found or you do not have permission to access it',
+        message: "Draft not found or you do not have permission to access it",
       });
     }
 
     // Calculate days remaining
-    const draftAge = Date.now() - new Date(draft.draftCreatedAt || draft.createdAt).getTime();
-    const daysRemaining = Math.max(0, 3 - Math.floor(draftAge / (1000 * 60 * 60 * 24)));
+    const draftAge =
+      Date.now() - new Date(draft.draftCreatedAt || draft.createdAt).getTime();
+    const daysRemaining = Math.max(
+      0,
+      3 - Math.floor(draftAge / (1000 * 60 * 60 * 24)),
+    );
 
     res.status(200).json({
       success: true,
       draft: {
         ...draft.toObject(),
         daysRemaining,
-        expiresAt: new Date(new Date(draft.draftCreatedAt || draft.createdAt).getTime() + 3 * 24 * 60 * 60 * 1000),
+        expiresAt: new Date(
+          new Date(draft.draftCreatedAt || draft.createdAt).getTime() +
+            3 * 24 * 60 * 60 * 1000,
+        ),
       },
     });
   } catch (error) {
-    console.error('Get draft by ID error:', error);
+    console.error("Get draft by ID error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error fetching draft',
+      message: "Error fetching draft",
       error: error.message,
     });
   }
@@ -962,13 +994,13 @@ exports.cleanupOldDrafts = async (req, res) => {
     const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
 
     const result = await Post.deleteMany({
-      status: 'draft',
+      status: "draft",
       $or: [
         { draftCreatedAt: { $lte: threeDaysAgo } },
-        { 
+        {
           draftCreatedAt: null,
-          createdAt: { $lte: threeDaysAgo }
-        }
+          createdAt: { $lte: threeDaysAgo },
+        },
       ],
     });
 
@@ -980,10 +1012,10 @@ exports.cleanupOldDrafts = async (req, res) => {
       deletedCount: result.deletedCount,
     });
   } catch (error) {
-    console.error('Cleanup drafts error:', error);
+    console.error("Cleanup drafts error:", error);
     res.status(500).json({
       success: false,
-      message: 'Error cleaning up drafts',
+      message: "Error cleaning up drafts",
       error: error.message,
     });
   }

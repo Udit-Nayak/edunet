@@ -78,4 +78,14 @@ export const notificationAPI = {
   deleteNotification: (id) => API.delete(`/notifications/${id}`),
 };
 
+
+export const searchAPI = {
+  search: (params) => API.get('/search', { params }),
+  getSuggestions: (query) => API.get('/search/suggestions', { params: { q: query } }),
+  getTrending: () => API.get('/search/trending'),
+  getPopularTags: (limit = 20) => API.get('/search/popular-tags', { params: { limit } }),
+  trackSearch: (query) => API.post('/search/track', { query }),
+};
+
+
 export default API;

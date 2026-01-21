@@ -96,9 +96,9 @@ const postSchema = new mongoose.Schema(
     },
 
     draftCreatedAt: {
-  type: Date,
-  default: null,
-},
+      type: Date,
+      default: null,
+    },
 
     // For questions only
     acceptedAnswerId: {
@@ -151,16 +151,33 @@ postSchema.index({ tags: 1 });
 postSchema.index({ type: 1, status: 1, createdAt: -1 });
 postSchema.index({ title: "text", content: "text", tags: "text" });
 
+// TEXT SEARCH INDEX - Add this to Post.js
+postSchema.index(
+  {
+    title: "text",
+    content: "text",
+    tags: "text",
+  },
+  {
+    weights: {
+      title: 10, // Title matches are most important
+      tags: 5, // Tag matches are medium importance
+      content: 1, // Content matches are least important
+    },
+    name: "post_text_search",
+  },
+);
+
 // Virtual for calculating net votes
 postSchema.virtual("netVotes").get(function () {
   return this.upvotes - this.downvotes;
 });
 
-postSchema.pre('save', async function() {
-  if (this.isModified('status')) {
-    if (this.status === 'draft' && !this.draftCreatedAt) {
+postSchema.pre("save", async function () {
+  if (this.isModified("status")) {
+    if (this.status === "draft" && !this.draftCreatedAt) {
       this.draftCreatedAt = new Date();
-    } else if (this.status === 'published') {
+    } else if (this.status === "published") {
       this.draftCreatedAt = null;
     }
   }
@@ -192,13 +209,14 @@ postSchema.methods.getPublicData = function (requestingUserId = null) {
   };
 
   // Only include saveCount if requesting user is the author
-  if (requestingUserId && this.authorId.toString() === requestingUserId.toString()) {
+  if (
+    requestingUserId &&
+    this.authorId.toString() === requestingUserId.toString()
+  ) {
     data.saveCount = this.saveCount;
   }
 
   return data;
 };
-
-
 
 module.exports = mongoose.model("Post", postSchema);

@@ -20,6 +20,7 @@ import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
 import PostDetail from './pages/PostDetail';
 import UserProfile from './pages/UserProfile';
+import Search from './pages/Search';
 
 // Protected Route Component
 function ProtectedRoute({ children, skipProfileCheck = false }) {
@@ -137,6 +138,8 @@ function AppContent() {
         <Route path="/user/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+        <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import { FiHome, FiPlusCircle, FiUser, FiLogOut, FiMenu } from 'react-icons/fi';
 import { useState } from 'react';
 import NotificationDropdown from './NotificationDropdown';
+import SearchBar from '../search/SearchBar';
 
 export default function Navbar() {
   const { user, isAuthenticated } = useAuth();
@@ -33,9 +34,16 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to={isAuthenticated ? "/feed" : "/"} className="flex items-center">
+          <Link to={isAuthenticated ? "/feed" : "/"} className="flex items-center flex-shrink-0">
             <span className="text-2xl font-bold text-primary-600">EduConnect</span>
           </Link>
+
+          {/* Search Bar (Desktop - center) */}
+          {isAuthenticated && (
+            <div className="hidden md:block flex-1 max-w-xl mx-8">
+              <SearchBar variant="navbar" />
+            </div>
+          )}
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center space-x-4">
@@ -114,6 +122,13 @@ export default function Navbar() {
             <FiMenu className="w-6 h-6" />
           </button>
         </div>
+
+        {/* Search Bar (Mobile - below navbar) */}
+        {isAuthenticated && (
+          <div className="md:hidden pb-3">
+            <SearchBar variant="navbar" />
+          </div>
+        )}
 
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
