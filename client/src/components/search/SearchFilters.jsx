@@ -14,7 +14,14 @@ export default function SearchFilters({ filters, onFilterChange, onClearAll }) {
   }, []);
 
   const handleTypeChange = (type) => {
-    onFilterChange({ ...filters, type });
+    // Always reset answered filter when changing type
+    const newFilters = { 
+      ...filters, 
+      type,
+      // Reset answered to 'all' when changing type
+      answered: 'all'
+    };
+    onFilterChange(newFilters);
   };
 
   const handleTagToggle = (tag) => {
@@ -155,34 +162,36 @@ export default function SearchFilters({ filters, onFilterChange, onClearAll }) {
           </div>
         </div>
 
-        {/* Answered Status (for questions) */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Question Status
-          </label>
-          <div className="space-y-2">
-            {[
-              { value: 'all', label: 'All Questions' },
-              { value: 'true', label: 'Answered' },
-              { value: 'false', label: 'Unanswered' },
-            ].map((status) => (
-              <label
-                key={status.value}
-                className="flex items-center space-x-2 cursor-pointer"
-              >
-                <input
-                  type="radio"
-                  name="answered"
-                  value={status.value}
-                  checked={filters.answered === status.value}
-                  onChange={() => handleAnsweredChange(status.value)}
-                  className="text-primary-600 focus:ring-primary-500"
-                />
-                <span className="text-sm text-gray-700">{status.label}</span>
-              </label>
-            ))}
+        {/* Answered Status (only show for questions or all) */}
+        {(filters.type === 'all' || filters.type === 'question') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Question Status
+            </label>
+            <div className="space-y-2">
+              {[
+                { value: 'all', label: 'All Questions' },
+                { value: 'true', label: 'Answered' },
+                { value: 'false', label: 'Unanswered' },
+              ].map((status) => (
+                <label
+                  key={status.value}
+                  className="flex items-center space-x-2 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    name="answered"
+                    value={status.value}
+                    checked={filters.answered === status.value}
+                    onChange={() => handleAnsweredChange(status.value)}
+                    className="text-primary-600 focus:ring-primary-500"
+                  />
+                  <span className="text-sm text-gray-700">{status.label}</span>
+                </label>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Popular Tags */}
         <div>

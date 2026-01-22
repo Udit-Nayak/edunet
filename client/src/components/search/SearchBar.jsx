@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { FiSearch, FiX, FiClock, FiTrendingUp } from "react-icons/fi";
 import { useSearchSuggestions } from "../../hooks/useSearchSuggestions";
 
@@ -8,8 +8,25 @@ export default function SearchBar({ initialQuery = "", variant = "navbar" }) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const { suggestions } = useSearchSuggestions(query);
   const navigate = useNavigate();
+  const location = useLocation();
   const inputRef = useRef(null);
   const dropdownRef = useRef(null);
+
+  // Update query when initialQuery changes
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
+
+  // Update query when URL changes (for search page)
+  useEffect(() => {
+    if (location.pathname === '/search') {
+      const params = new URLSearchParams(location.search);
+      const urlQuery = params.get('q') || '';
+      if (urlQuery !== query) {
+        setQuery(urlQuery);
+      }
+    }
+  }, [location]);
 
   // Load recent searches from localStorage
   const [recentSearches, setRecentSearches] = useState(() => {
@@ -39,18 +56,17 @@ export default function SearchBar({ initialQuery = "", variant = "navbar" }) {
 
   const handleSearch = (searchQuery) => {
     const trimmed = searchQuery.trim();
-    if (!trimmed || trimmed.length < 2) return;
+    if (!trimmed || trimmed.length < 2) {
+      return;
+    }
 
     // Save to recent searches
     const recent = JSON.parse(localStorage.getItem("recentSearches") || "[]");
-    const updated = [trimmed, ...recent.filter(s=> s !== trimmed)].slice(
-      0,
-      5,
-    );
+    const updated = [trimmed, ...recent.filter(s => s !== trimmed)].slice(0, 5);
     localStorage.setItem("recentSearches", JSON.stringify(updated));
     setRecentSearches(updated);
 
-    // Navigate to search page
+    // Navigate to search page (will update if already there)
     navigate(`/search?q=${encodeURIComponent(trimmed)}`);
     setShowSuggestions(false);
     inputRef.current?.blur();

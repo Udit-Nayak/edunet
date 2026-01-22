@@ -1,10 +1,9 @@
+import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Provider } from 'react-redux';
+import { Provider, useDispatch } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
 import { store } from './redux/store';
 import { useAuth } from './hooks/useAuth';
-import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
 import { authAPI } from './services/api';
 import { loginSuccess, logout, setLoading } from './redux/slices/authSlice';
 
@@ -22,6 +21,59 @@ import PostDetail from './pages/PostDetail';
 import UserProfile from './pages/UserProfile';
 import Search from './pages/Search';
 
+// Loading Component
+function LoadingScreen() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-600 mx-auto mb-4"></div>
+        <p className="text-gray-600 text-lg">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+// Error Boundary Component
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('React Error Boundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center max-w-md p-8 bg-white rounded-lg shadow-lg">
+            <div className="text-red-500 text-6xl mb-4">⚠️</div>
+            <h1 className="text-2xl font-bold text-gray-900 mb-4">Oops! Something went wrong</h1>
+            <p className="text-gray-600 mb-4">{this.state.error?.message || 'An unexpected error occurred'}</p>
+            <button
+              onClick={() => {
+                localStorage.clear();
+                window.location.href = '/';
+              }}
+              className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            >
+              Clear Cache & Restart
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
 // Protected Route Component
 function ProtectedRoute({ children, skipProfileCheck = false }) {
   const { isAuthenticated, loading, needsProfileSetup } = useAuth();
@@ -29,11 +81,7 @@ function ProtectedRoute({ children, skipProfileCheck = false }) {
   console.log('ProtectedRoute:', { isAuthenticated, loading, needsProfileSetup, skipProfileCheck });
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
@@ -41,7 +89,6 @@ function ProtectedRoute({ children, skipProfileCheck = false }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Skip profile setup check if this is the profile setup page itself
   if (!skipProfileCheck && needsProfileSetup) {
     console.log('Needs profile setup, redirecting to profile-setup');
     return <Navigate to="/profile-setup" replace />;
@@ -55,11 +102,7 @@ function PublicRoute({ children }) {
   const { isAuthenticated, loading, needsProfileSetup } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   if (isAuthenticated && needsProfileSetup) {
@@ -75,6 +118,7 @@ function PublicRoute({ children }) {
 
 function AppContent() {
   const dispatch = useDispatch();
+  const [initError, setInitError] = useState(null);
 
   // Check authentication on mount
   useEffect(() => {
@@ -85,6 +129,8 @@ function AppContent() {
       if (token) {
         try {
           dispatch(setLoading(true));
+          console.log('Fetching user data...');
+          
           const response = await authAPI.getMe();
           console.log('getMe response:', response.data);
           
@@ -100,17 +146,59 @@ function AppContent() {
           }));
         } catch (error) {
           console.error('Auth check failed:', error);
+          console.error('Error details:', error.response?.data);
+          
+          // Clear invalid token
+          localStorage.removeItem('token');
           dispatch(logout());
+          
+          // Show user-friendly error
+          if (error.response?.status === 401) {
+            console.log('Session expired, please login again');
+          } else if (!error.response) {
+            setInitError('Cannot connect to server. Please make sure the backend is running on http://localhost:5000');
+          }
         } finally {
           dispatch(setLoading(false));
         }
       } else {
+        console.log('No token found, user not logged in');
         dispatch(setLoading(false));
       }
     };
 
     checkAuth();
   }, [dispatch]);
+
+  // Show initialization error
+  if (initError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center max-w-md p-8 bg-white rounded-lg shadow-lg border-2 border-red-200">
+          <div className="text-red-500 text-6xl mb-4">🔌</div>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Connection Error</h1>
+          <p className="text-gray-600 mb-6">{initError}</p>
+          <div className="space-y-3">
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            >
+              Try Again
+            </button>
+            <button
+              onClick={() => {
+                setInitError(null);
+                dispatch(setLoading(false));
+              }}
+              className="w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+            >
+              Continue Anyway
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <Router>
@@ -140,7 +228,6 @@ function AppContent() {
         <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
         <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
 
-
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -150,10 +237,35 @@ function AppContent() {
 
 function App() {
   return (
-    <Provider store={store}>
-      <AppContent />
-      <Toaster position="top-right" />
-    </Provider>
+    <ErrorBoundary>
+      <Provider store={store}>
+        <AppContent />
+        <Toaster 
+          position="top-right"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#363636',
+              color: '#fff',
+            },
+            success: {
+              duration: 3000,
+              iconTheme: {
+                primary: '#10b981',
+                secondary: '#fff',
+              },
+            },
+            error: {
+              duration: 4000,
+              iconTheme: {
+                primary: '#ef4444',
+                secondary: '#fff',
+              },
+            },
+          }}
+        />
+      </Provider>
+    </ErrorBoundary>
   );
 }
 

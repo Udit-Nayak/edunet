@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Navbar from '../components/common/Navbar';
-import SearchBar from '../components/search/SearchBar';
 import SearchFilters from '../components/search/SearchFilters';
 import SearchResults from '../components/search/SearchResults';
 import { useInfiniteSearch } from '../hooks/useInfiniteSearch';
@@ -53,12 +52,7 @@ export default function Search() {
       <Navbar />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Search Bar */}
-        <div className="mb-6">
-          <SearchBar initialQuery={query} variant="page" />
-        </div>
-
-        {/* Main Content */}
+        {/* Main Content - NO DUPLICATE SEARCH BAR */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
           <aside className="lg:col-span-1">
@@ -91,7 +85,7 @@ export default function Search() {
                   Start Searching
                 </h2>
                 <p className="text-gray-600">
-                  Enter a search term to find posts, questions, and articles
+                  Use the search bar above to find posts, questions, and articles
                 </p>
               </div>
             )}

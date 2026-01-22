@@ -27,7 +27,7 @@ class SearchService {
       minUpvotes,
     });
 
-    const sortOptions = this.buildSortOptions(sort);
+    const sortOptions = this.buildSortOptions(sort, q);
 
     const posts = await Post.find(query)
       .select("+upvotes +downvotes +upvotedBy +downvotedBy")
@@ -55,11 +55,22 @@ class SearchService {
   buildSearchQuery(searchText, filters) {
     const { cursor, type, tags, author, answered, minUpvotes } = filters;
 
+    // Build flexible search query - partial matching
     const query = {
-      $text: { $search: searchText },
       status: 'published',
     };
 
+    // Use regex for partial text matching instead of strict $text search
+    if (searchText && searchText.trim()) {
+      const searchRegex = new RegExp(searchText.trim().split(/\s+/).join('|'), 'i');
+      query.$or = [
+        { title: searchRegex },
+        { content: searchRegex },
+        { tags: searchRegex }
+      ];
+    }
+
+    // Handle post type filter
     if (type && type !== 'all') {
       query.type = type;
     }
@@ -73,11 +84,24 @@ class SearchService {
       query.authorId = author;
     }
 
-    if (answered === 'true') {
-      query.answerCount = { $gt: 0 };
-    } else if (answered === 'false') {
-      query.type = 'question';
-      query.answerCount = 0;
+    // Answered filter - ONLY applies to questions
+    // Don't apply if type is specifically set to 'note' or 'article'
+    if (answered !== 'all' && type !== 'note' && type !== 'article') {
+      if (answered === 'true') {
+        // Show only answered questions
+        if (type === 'all') {
+          // If type is 'all', we need to add type filter
+          query.type = 'question';
+        }
+        query.answerCount = { $gt: 0 };
+      } else if (answered === 'false') {
+        // Show only unanswered questions
+        if (type === 'all') {
+          // If type is 'all', we need to add type filter
+          query.type = 'question';
+        }
+        query.answerCount = 0;
+      }
     }
 
     if (minUpvotes) {
@@ -98,22 +122,23 @@ class SearchService {
     return query;
   }
 
-  buildSortOptions(sort) {
+  buildSortOptions(sort, searchText) {
     switch (sort) {
       case 'relevance':
+        // For relevance, prioritize exact matches, then upvotes, then recent
         return {
-          score: { $meta: 'textScore' },
           upvotes: -1,
+          viewCount: -1,
           createdAt: -1,
         };
       case 'recent':
         return { createdAt: -1 };
       case 'popular':
-        return { upvotes: -1, createdAt: -1 };
+        return { upvotes: -1, viewCount: -1, createdAt: -1 };
       case 'trending':
         return { viewCount: -1, upvotes: -1, createdAt: -1 };
       default:
-        return { score: { $meta: 'textScore' }, createdAt: -1 };
+        return { createdAt: -1 };
     }
   }
 
@@ -153,8 +178,11 @@ class SearchService {
 
   async getSuggestions(query) {
     try {
+      // Use regex for partial matching
+      const searchRegex = new RegExp(query.trim(), 'i');
+      
       const titleMatches = await Post.find({
-        title: { $regex: query, $options: 'i' },
+        title: searchRegex,
         status: 'published',
       })
         .select('title')
@@ -166,7 +194,7 @@ class SearchService {
         { $unwind: '$tags' },
         {
           $match: {
-            tags: { $regex: query, $options: 'i' },
+            tags: searchRegex,
           },
         },
         {

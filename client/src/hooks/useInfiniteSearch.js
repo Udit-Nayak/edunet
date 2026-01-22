@@ -39,7 +39,7 @@ export const useInfiniteSearch = (query, filters = {}) => {
       setCursor(response.data.nextCursor);
       setHasMore(response.data.hasMore);
       
-      // Track search query
+      // Track search query only on first load
       if (!cursor) {
         searchAPI.trackSearch(query).catch(() => {});
       }
@@ -60,20 +60,34 @@ export const useInfiniteSearch = (query, filters = {}) => {
 
   // Reset and load initial results when query or filters change
   useEffect(() => {
+    // Clear previous results
     setResults([]);
     setCursor(null);
     setHasMore(true);
     setError(null);
     setInitialLoad(true);
     
+    // Only search if query has at least 2 characters
     if (query && query.trim().length >= 2) {
-      loadMore();
+      // Small delay to prevent too many rapid searches
+      const timer = setTimeout(() => {
+        loadMore();
+      }, 300);
+      
+      return () => clearTimeout(timer);
+    } else {
+      setInitialLoad(false);
+      setLoading(false);
     }
-  }, [query, filtersString, loadMore]);
+  }, [query, filtersString]);
 
   // Retry function
   const retry = useCallback(() => {
+    setResults([]);
+    setCursor(null);
+    setHasMore(true);
     setError(null);
+    setInitialLoad(true);
     loadMore();
   }, [loadMore]);
 
