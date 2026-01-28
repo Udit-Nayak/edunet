@@ -89,6 +89,56 @@ const postSchema = new mongoose.Schema(
       min: 0,
     },
 
+    // ML Metadata
+    mlMetadata: {
+      embedding: {
+        type: [Number], // 512D vector from TensorFlow Hub
+        default: null,
+      },
+      predictedTags: [
+        {
+          tag: String,
+          confidence: {
+            type: Number,
+            min: 0,
+            max: 1,
+          },
+        },
+      ],
+      semanticTopics: {
+        type: [String],
+        default: [],
+      },
+      lastEmbeddingUpdate: {
+        type: Date,
+        default: null,
+      },
+    },
+
+    // Engagement metrics for ML training
+    engagementMetrics: {
+      avgTimeSpent: {
+        type: Number, // seconds
+        default: 0,
+      },
+      clickThroughRate: {
+        type: Number, // 0-1
+        default: 0,
+      },
+      completionRate: {
+        type: Number, // 0-1 (how many read to end)
+        default: 0,
+      },
+      totalImpressions: {
+        type: Number,
+        default: 0,
+      },
+      totalClicks: {
+        type: Number,
+        default: 0,
+      },
+    },
+
     status: {
       type: String,
       enum: ["draft", "published"],
@@ -150,6 +200,9 @@ postSchema.index({ authorId: 1, createdAt: -1 });
 postSchema.index({ tags: 1 });
 postSchema.index({ type: 1, status: 1, createdAt: -1 });
 postSchema.index({ title: "text", content: "text", tags: "text" });
+postSchema.index({ 'mlMetadata.lastEmbeddingUpdate': 1 });
+postSchema.index({ 'mlMetadata.semanticTopics': 1 });
+postSchema.index({ 'engagementMetrics.clickThroughRate': -1 });
 
 // TEXT SEARCH INDEX - Add this to Post.js
 postSchema.index(

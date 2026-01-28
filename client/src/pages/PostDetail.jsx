@@ -14,6 +14,7 @@ import toast from "react-hot-toast";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import MediaViewer from "../components/common/MediaViewer";
 import SaveButton from "../components/post/SaveButton";
+import { useTimeTracking } from "../hooks/useInteractionTracking";
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -25,6 +26,9 @@ export default function PostDetail() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
+  if (user) {
+    useTimeTracking(id, "detail");
+  }
 
   useEffect(() => {
     fetchPost();

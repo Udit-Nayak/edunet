@@ -1,34 +1,57 @@
 import { Link, useNavigate } from "react-router-dom";
-import {
-  formatTimeAgo,
-  formatNumber,
-  truncateText,
-} from "../../utils/formatters";
+import { useState, useRef } from "react";
+import { useAuth } from "../../hooks/useAuth";
+import { useInteractionTracking, useViewportTracking } from "../../hooks/useInteractionTracking";
+import { formatTimeAgo, formatNumber, truncateText } from "../../utils/formatters";
 import VoteButton from "./VoteButton";
 import { postAPI } from "../../services/api";
-import {
-  FiMessageSquare,
-  FiEye,
-  FiCheckCircle,
-  FiMoreVertical,
-  FiImage,
-} from "react-icons/fi";
-import { useState } from "react";
-import { useAuth } from "../../hooks/useAuth";
+import { FiMessageSquare, FiEye, FiCheckCircle, FiMoreVertical, FiImage } from "react-icons/fi";
 import ConfirmDialog from "../common/ConfirmDialog";
 import toast from "react-hot-toast";
 import MediaViewer from "../common/MediaViewer";
 import SaveButton from './SaveButton';
 
-export default function PostCard({ post, onDelete }) {
+export default function PostCard({ post, onDelete, position = 0, source = 'feed' }) {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const cardRef = useRef(null);
+  const { trackView, trackClick, trackTagClick } = useInteractionTracking();
+  
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
 
   const isAuthor = user?._id === post.authorId?._id;
+
+  // Track when post becomes visible in viewport
+  useViewportTracking(cardRef, post._id, (postId) => {
+    if(user){
+    trackView(postId, source, position);
+    }
+  });
+
+  // Handle post click with tracking
+  const handlePostClick = (e) => {
+    // Don't track if clicking on interactive elements
+    if (
+      e.target.closest('button') || 
+      e.target.closest('a') || 
+      e.target.closest('.vote-button')
+    ) {
+      return;
+    }
+
+    trackClick(post._id, source, position);
+    navigate(`/post/${post._id}`);
+  };
+
+  // Handle tag click with tracking
+  const handleTagClick = (e, tag) => {
+    e.stopPropagation();
+    trackTagClick(post._id, tag);
+    navigate(`/tag/${tag}`);
+  };
 
   const getTypeColor = (type) => {
     switch (type) {
@@ -56,7 +79,6 @@ export default function PostCard({ post, onDelete }) {
     }
   };
 
-  // Strip HTML tags for preview
   const getPlainText = (html) => {
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
@@ -77,7 +99,11 @@ export default function PostCard({ post, onDelete }) {
 
   return (
     <>
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+      <div 
+        ref={cardRef}
+        className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+        onClick={handlePostClick}
+      >
         <div className="p-4">
           {/* Header */}
           <div className="flex items-start justify-between mb-3">
@@ -95,6 +121,7 @@ export default function PostCard({ post, onDelete }) {
                   <Link
                     to={`/user/${post.authorId?._id}`}
                     className="font-medium text-gray-900 hover:text-primary-600 truncate"
+                    onClick={(e) => e.stopPropagation()}
                   >
                     {post.authorId?.username}
                   </Link>
@@ -117,7 +144,7 @@ export default function PostCard({ post, onDelete }) {
             </div>
 
             {isAuthor && (
-              <div className="relative">
+              <div className="relative" onClick={(e) => e.stopPropagation()}>
                 <button
                   onClick={() => setShowMenu(!showMenu)}
                   className="p-1 hover:bg-gray-100 rounded"
@@ -151,26 +178,26 @@ export default function PostCard({ post, onDelete }) {
           </div>
 
           {/* Content */}
-          <Link to={`/post/${post._id}`} className="block">
+          <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-2 hover:text-primary-600 transition-colors">
               {post.title}
             </h2>
             <p className="text-gray-600 mb-3 line-clamp-3">
               {truncateText(getPlainText(post.content), 200)}
             </p>
-          </Link>
+          </div>
 
           {/* Tags */}
           {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3">
+            <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.stopPropagation()}>
               {post.tags.slice(0, 5).map((tag, index) => (
-                <Link
+                <button
                   key={index}
-                  to={`/tag/${tag}`}
+                  onClick={(e) => handleTagClick(e, tag)}
                   className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                 >
                   #{tag}
-                </Link>
+                </button>
               ))}
               {post.tags.length > 5 && (
                 <span className="text-xs px-2 py-1 text-gray-500">
@@ -182,9 +209,8 @@ export default function PostCard({ post, onDelete }) {
 
           {/* Attachments Preview */}
           {post.attachments && post.attachments.length > 0 && (
-            <div className="mb-3">
+            <div className="mb-3" onClick={(e) => e.stopPropagation()}>
               {post.attachments.length === 1 ? (
-                // Single attachment - show larger preview
                 <button
                   onClick={(e) => {
                     e.preventDefault();
@@ -213,7 +239,6 @@ export default function PostCard({ post, onDelete }) {
                   )}
                 </button>
               ) : (
-                // Multiple attachments - show grid
                 <div className="grid grid-cols-2 gap-2">
                   {post.attachments.slice(0, 4).map((attachment, index) => (
                     <button
@@ -254,28 +279,30 @@ export default function PostCard({ post, onDelete }) {
           )}
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-            <VoteButton
-              targetId={post._id}
-              initialVotes={post.netVotes || 0}
-              userVote={post.userVote}
-              onUpvote={postAPI.upvotePost}
-              onDownvote={postAPI.downvotePost}
-              size="md"
-            />
+          <div className="flex items-center justify-between pt-3 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
+            <div className="vote-button">
+              <VoteButton
+                targetId={post._id}
+                initialVotes={post.netVotes || 0}
+                userVote={post.userVote}
+                onUpvote={postAPI.upvotePost}
+                onDownvote={postAPI.downvotePost}
+                size="md"
+              />
+            </div>
 
             <SaveButton 
-  postId={post._id}
-  initialSaved={post.isSaved}
-  showCount={isAuthor}
-  saveCount={post.saveCount}
-/>
-
+              postId={post._id}
+              initialSaved={post.isSaved}
+              showCount={isAuthor}
+              saveCount={post.saveCount}
+            />
 
             <div className="flex items-center space-x-4 text-sm text-gray-500">
               <Link
                 to={`/post/${post._id}`}
                 className="flex items-center space-x-1 hover:text-primary-600"
+                onClick={(e) => e.stopPropagation()}
               >
                 <FiMessageSquare className="w-4 h-4" />
                 <span>{formatNumber(post.answerCount || 0)} answers</span>

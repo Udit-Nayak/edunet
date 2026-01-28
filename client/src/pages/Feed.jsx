@@ -1,19 +1,19 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { postAPI } from '../services/api';
-import Navbar from '../components/common/Navbar';
-import PostCard from '../components/post/PostCard';
-import LoadingSpinner from '../components/common/LoadingSpinner';
-import ErrorMessage from '../components/common/ErrorMessage';
-import { FiFilter, FiTrendingUp, FiClock, FiStar } from 'react-icons/fi';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { postAPI } from "../services/api";
+import Navbar from "../components/common/Navbar";
+import PostCard from "../components/post/PostCard";
+import LoadingSpinner from "../components/common/LoadingSpinner";
+import ErrorMessage from "../components/common/ErrorMessage";
+import { FiFilter, FiTrendingUp, FiClock, FiStar } from "react-icons/fi";
 
 export default function Feed() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
-    type: 'all', // all, question, note, article
-    sortBy: 'recent', // recent, popular, trending
+    type: "all", // all, question, note, article
+    sortBy: "recent", // recent, popular, trending
   });
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -32,8 +32,8 @@ export default function Feed() {
         limit: 10,
         sortBy: filters.sortBy,
       };
-      
-      if (filters.type !== 'all') {
+
+      if (filters.type !== "all") {
         params.type = filters.type;
       }
 
@@ -47,12 +47,13 @@ export default function Feed() {
       }
 
       setHasMore(
-        response.data.pagination.currentPage < response.data.pagination.totalPages
+        response.data.pagination.currentPage <
+          response.data.pagination.totalPages,
       );
       setPage(pageNum);
       setError(null);
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to load posts');
+      setError(err.response?.data?.message || "Failed to load posts");
     } finally {
       setLoading(false);
     }
@@ -89,7 +90,7 @@ export default function Feed() {
               <FiFilter className="w-5 h-5 text-gray-500" />
               <select
                 value={filters.type}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
+                onChange={(e) => handleFilterChange("type", e.target.value)}
                 className="input-field py-2"
               >
                 <option value="all">All Posts</option>
@@ -103,33 +104,33 @@ export default function Feed() {
             <div className="flex items-center space-x-2">
               <span className="text-sm text-gray-600">Sort by:</span>
               <button
-                onClick={() => handleFilterChange('sortBy', 'recent')}
+                onClick={() => handleFilterChange("sortBy", "recent")}
                 className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filters.sortBy === 'recent'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  filters.sortBy === "recent"
+                    ? "bg-primary-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 <FiClock className="w-4 h-4" />
                 <span>Recent</span>
               </button>
               <button
-                onClick={() => handleFilterChange('sortBy', 'popular')}
+                onClick={() => handleFilterChange("sortBy", "popular")}
                 className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filters.sortBy === 'popular'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  filters.sortBy === "popular"
+                    ? "bg-primary-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 <FiStar className="w-4 h-4" />
                 <span>Popular</span>
               </button>
               <button
-                onClick={() => handleFilterChange('sortBy', 'trending')}
+                onClick={() => handleFilterChange("sortBy", "trending")}
                 className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filters.sortBy === 'trending'
-                    ? 'bg-primary-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  filters.sortBy === "trending"
+                    ? "bg-primary-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                 }`}
               >
                 <FiTrendingUp className="w-4 h-4" />
@@ -144,18 +145,29 @@ export default function Feed() {
           {loading && page === 1 ? (
             <LoadingSpinner size="lg" text="Loading posts..." />
           ) : error ? (
-            <ErrorMessage message={error} onRetry={() => fetchPosts(1, false)} />
+            <ErrorMessage
+              message={error}
+              onRetry={() => fetchPosts(1, false)}
+            />
           ) : posts.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-gray-500 mb-4">No posts found</p>
-              <button onClick={() => navigate('/create-post')} className="btn-primary">
+              <button
+                onClick={() => navigate("/create-post")}
+                className="btn-primary"
+              >
                 Create First Post
               </button>
             </div>
           ) : (
             <>
-              {posts.map((post) => (
-                <PostCard key={post._id} post={post} />
+              {posts.map((post, index) => (
+                <PostCard
+                  key={post._id}
+                  post={post}
+                  position={index + 1} 
+                  source="feed" 
+                />
               ))}
 
               {/* Load More */}
@@ -166,7 +178,7 @@ export default function Feed() {
                     disabled={loading}
                     className="btn-secondary"
                   >
-                    {loading ? 'Loading...' : 'Load More'}
+                    {loading ? "Loading..." : "Load More"}
                   </button>
                 </div>
               )}

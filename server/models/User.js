@@ -163,11 +163,111 @@ const userSchema = new mongoose.Schema(
       type: Date,
       default: Date.now,
     },
+
+    userInteractions: {
+      viewedPosts: [
+        {
+          postId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Post",
+          },
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+          timeSpent: {
+            type: Number,
+            default: 0,
+          },
+          scrollDepth: {
+            type: Number,
+            default: 0,
+          },
+        },
+      ],
+      upvotedPosts: [
+        {
+          postId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Post",
+          },
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      downvotedPosts: [
+        {
+          postId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Post",
+          },
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      clickedTags: [
+        {
+          tag: String,
+          count: {
+            type: Number,
+            default: 1,
+          },
+          lastClicked: {
+            type: Date,
+            default: Date.now,
+          },
+        },
+      ],
+      searchHistory: [
+        {
+          query: String,
+          timestamp: {
+            type: Date,
+            default: Date.now,
+          },
+          clickedResults: [
+            {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Post",
+            },
+          ],
+        },
+      ],
+    },
+
+    mlProfile: {
+      embedding: {
+        type: [Number], // Will store 512D vector later
+        default: null,
+      },
+      lastUpdated: {
+        type: Date,
+        default: null,
+      },
+      interests: {
+        type: [String],
+        default: [],
+      },
+      topTags: [
+        {
+          tag: String,
+          score: Number,
+        },
+      ],
+    },
   },
+
   { timestamps: true },
 );
 
 userSchema.index({ reputation: -1 });
+
+userSchema.index({ "mlProfile.lastUpdated": 1 });
+userSchema.index({ "userInteractions.viewedPosts.postId": 1 });
 
 userSchema.pre("save", async function () {
   if (!this.isModified("password")) {
@@ -210,5 +310,4 @@ userSchema.methods.getPublicProfile = function () {
     longestStreak: this.longestStreak || 0,
   };
 };
-
 module.exports = mongoose.model("User", userSchema);

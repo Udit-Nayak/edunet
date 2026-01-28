@@ -7,12 +7,14 @@ const cookieParser = require('cookie-parser');
 const connectDB = require('./config/database');
 const { scheduleDraftCleanup } = require('./jobs/draftCleanup');
 
+
 require('./config/redis');
 require('./config/firebase');
 
 const app = express();
 
 connectDB();
+
 scheduleDraftCleanup();
 
 app.use(helmet()); 
@@ -36,6 +38,7 @@ app.use('/api/comments', trackActivity, require('./routes/commentRoutes'));
 app.use('/api/upload', trackActivity, require('./routes/uploadRoutes'));
 app.use('/api/notifications', trackActivity, require('./routes/notificationRoutes'));
 app.use('/api/search', trackActivity, require('./routes/searchRoutes'));
+app.use('/api/analytics', require('./routes/analyticsRoutes'));
 
 
 

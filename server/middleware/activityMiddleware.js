@@ -1,22 +1,22 @@
 const reputationService = require('../services/reputationService');
 
 /**
- * Middleware to track daily activity
- * Checks if user is active today and awards reputation accordingly
+ * Middleware to track user activity and award daily active bonuses
  */
 exports.trackActivity = async (req, res, next) => {
   try {
-    // Only track for authenticated users
+    // Only track if user is authenticated
     if (req.user && req.user._id) {
-      // Run async without blocking the request
-      reputationService.checkDailyActivity(req.user._id).catch(err => {
-        console.error('Activity tracking error:', err);
+      // Run asynchronously - don't block the request
+      reputationService.checkDailyActivity(req.user._id).catch((err) => {
+        console.error('Error tracking daily activity:', err);
       });
     }
+    
     next();
   } catch (error) {
-    // Don't block the request if activity tracking fails
-    console.error('Activity middleware error:', error);
+    // Don't block request on error
+    console.error('Activity tracking middleware error:', error);
     next();
   }
 };
