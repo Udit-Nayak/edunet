@@ -19,6 +19,7 @@ const {
 
 } = require('../controllers/postController');
 const { protect } = require('../middleware/authMiddleware');
+const mlService = require('../services/mlService');
 
 
 const optionalAuth = async (req, res, next) => {
@@ -71,4 +72,27 @@ router.post('/:id/upvote', protect, upvotePost);
 router.post('/:id/downvote', protect, downvotePost);
 router.post('/:id/save', protect, savePost);
 
+router.post('/semantic-search', protect, async (req, res) => {
+  try {
+    const { query, limit = 10 } = req.body;
+    
+    // Get results from ML service
+    const mlResults = await mlService.searchPosts(query, limit);
+    
+    // Get full post details from MongoDB
+    const postIds = mlResults.map(r => r.post_id);
+    const posts = await Post.find({ post_id: { $in: postIds } });
+    
+    res.status(200).json({
+      success: true,
+      posts
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Semantic search failed',
+      error: error.message
+    });
+  }
+});
 module.exports = router;

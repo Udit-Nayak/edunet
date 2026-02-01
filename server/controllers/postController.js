@@ -5,6 +5,8 @@ const cacheService = require("../services/cacheService");
 const storageService = require("../services/storageService");
 const reputationService = require("../services/reputationService");
 const notificationService = require("../services/notificationService");
+const mlService = require('../services/mlService');
+
 
 const clearSearchCaches = async () => {
   try {
@@ -271,11 +273,13 @@ exports.getPostById = async (req, res) => {
       postData.saveCount = post.saveCount;
     }
 
+    const similarPosts = await mlService.getSimilarPosts(post._id, 5);
+
     await cacheService.set(cacheKey, postData, 300);
 
     res.status(200).json({
       success: true,
-      post: postData,
+      post: postData,similarPosts,
     });
   } catch (error) {
     console.error("Get post by ID error:", error);

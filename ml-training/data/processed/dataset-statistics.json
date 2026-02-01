@@ -1,0 +1,139 @@
+{
+  "total_posts": 10000,
+  "unique_tags": 4428,
+  "score_stats": {
+    "mean": 33.0922,
+    "median": 11.0,
+    "min": 5,
+    "max": 5190
+  },
+  "answer_count_stats": {
+    "mean": 5.9452,
+    "median": 5.0,
+    "min": 1,
+    "max": 408
+  },
+  "top_30_tags": [
+    {
+      "tag": "c#",
+      "count": 1371
+    },
+    {
+      "tag": "java",
+      "count": 901
+    },
+    {
+      "tag": ".net",
+      "count": 843
+    },
+    {
+      "tag": "c++",
+      "count": 622
+    },
+    {
+      "tag": "python",
+      "count": 570
+    },
+    {
+      "tag": "javascript",
+      "count": 509
+    },
+    {
+      "tag": "php",
+      "count": 390
+    },
+    {
+      "tag": "asp.net",
+      "count": 380
+    },
+    {
+      "tag": "jquery",
+      "count": 303
+    },
+    {
+      "tag": "sql",
+      "count": 300
+    },
+    {
+      "tag": "iphone",
+      "count": 299
+    },
+    {
+      "tag": "sql-server",
+      "count": 243
+    },
+    {
+      "tag": "html",
+      "count": 233
+    },
+    {
+      "tag": "asp.net-mvc",
+      "count": 219
+    },
+    {
+      "tag": "ruby",
+      "count": 199
+    },
+    {
+      "tag": "windows",
+      "count": 188
+    },
+    {
+      "tag": "wpf",
+      "count": 187
+    },
+    {
+      "tag": "objective-c",
+      "count": 181
+    },
+    {
+      "tag": "visual-studio",
+      "count": 172
+    },
+    {
+      "tag": "mysql",
+      "count": 172
+    },
+    {
+      "tag": "ruby-on-rails",
+      "count": 171
+    },
+    {
+      "tag": "css",
+      "count": 169
+    },
+    {
+      "tag": "database",
+      "count": 162
+    },
+    {
+      "tag": "linux",
+      "count": 156
+    },
+    {
+      "tag": "performance",
+      "count": 151
+    },
+    {
+      "tag": "algorithm",
+      "count": 135
+    },
+    {
+      "tag": "django",
+      "count": 131
+    },
+    {
+      "tag": "svn",
+      "count": 129
+    },
+    {
+      "tag": "unit-testing",
+      "count": 128
+    },
+    {
+      "tag": "xml",
+      "count": 128
+    }
+  ],
+  "processed_at": "2026-01-29T16:31:32.705313"
+}
