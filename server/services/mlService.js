@@ -5,6 +5,8 @@ const User = require("../models/User");
 const cacheService = require("./cacheService");
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || "http://localhost:8000";
+const USE_NEURAL_RANKING = process.env.USE_NEURAL_RANKING !== 'false'; // Default true
+
 class MLService {
   constructor() {
     this.client = axios.create({
@@ -14,6 +16,7 @@ class MLService {
         "Content-Type": "application/json",
       },
     });
+    this.useNeuralRanking = USE_NEURAL_RANKING;
   }
   async checkHealth() {
     try {
@@ -451,14 +454,78 @@ class MLService {
         .slice(-100)
         .map((v) => v.postId);
 
-      // Find posts similar to user vector
+      // Get candidate posts
+      const candidates = await Post.find({
+        status: "published",
+        _id: {
+          $nin: viewedPostIds.map((id) => new mongoose.Types.ObjectId(id)),
+        },
+        "mlMetadata.embedding": { $exists: true, $ne: null },
+      })
+        .limit(500) // Pre-filter to 500 candidates for neural ranking
+        .lean();
+
+      if (candidates.length === 0) {
+        console.log("📈 No candidates - returning trending posts");
+        return await this.getTrendingPosts(limit);
+      }
+
+      // Use neural ranking if enabled
+      if (this.useNeuralRanking) {
+        try {
+          const rankedPosts = await this.neuralRankPosts(
+            userVector,
+            user.interests || [],
+            candidates,
+            limit,
+          );
+          
+          if (rankedPosts && rankedPosts.length > 0) {
+            console.log(`✅ Neural ranking: ${rankedPosts.length} posts`);
+            return rankedPosts;
+          }
+        } catch (error) {
+          console.error("Neural ranking failed, falling back to rule-based:", error);
+        }
+      }
+
+      // Fallback to rule-based ranking (Phase 4 method)
+      return await this.ruleBasedRanking(userVector, candidates, limit);
+    } catch (error) {
+      console.error("Personalized feed error:", error);
+      return [];
+    }
+  }
+
+  /**
+   * Rank posts using neural ranking model
+   */
+  async neuralRankPosts(userVector, userInterests, candidatePosts, limit) {
+    try {
+      const response = await this.client.post("/api/ranking/neural-rank", {
+        user_vector: userVector,
+        user_interests: userInterests,
+        candidate_posts: candidatePosts,
+        limit: limit,
+      });
+
+      return response.data.posts;
+    } catch (error) {
+      console.error("Neural ranking error:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Rule-based ranking (Phase 4 fallback)
+   */
+  async ruleBasedRanking(userVector, candidates, limit) {
+    try {
       const personalizedPosts = await Post.aggregate([
         {
           $match: {
+            _id: { $in: candidates.map((c) => c._id) },
             status: "published",
-            _id: {
-              $nin: viewedPostIds.map((id) => new mongoose.Types.ObjectId(id)),
-            },
             "mlMetadata.embedding": { $exists: true, $ne: null },
           },
         },
@@ -483,13 +550,12 @@ class MLService {
             },
           },
         },
-        // Boost recent posts
         {
           $addFields: {
             recencyScore: {
               $divide: [
                 { $subtract: [new Date(), "$createdAt"] },
-                1000 * 60 * 60 * 24, // Days
+                1000 * 60 * 60 * 24,
               ],
             },
           },
@@ -498,9 +564,9 @@ class MLService {
           $addFields: {
             finalScore: {
               $add: [
-                { $multiply: ["$similarity", 0.7] }, // 70% similarity
-                { $multiply: [{ $divide: [1, "$recencyScore"] }, 0.2] }, // 20% recency
-                { $multiply: [{ $divide: ["$upvotes", 100] }, 0.1] }, // 10% popularity
+                { $multiply: ["$similarity", 0.7] },
+                { $multiply: [{ $divide: [1, "$recencyScore"] }, 0.2] },
+                { $multiply: [{ $divide: ["$upvotes", 100] }, 0.1] },
               ],
             },
           },
@@ -537,10 +603,24 @@ class MLService {
         },
       ]);
 
+      console.log(`✅ Rule-based ranking: ${personalizedPosts.length} posts`);
       return personalizedPosts;
     } catch (error) {
-      console.error("Personalized feed error:", error);
+      console.error("Rule-based ranking error:", error);
       return [];
+    }
+  }
+
+  /**
+   * Check ranking service status
+   */
+  async getRankingStatus() {
+    try {
+      const response = await this.client.get("/api/ranking/status");
+      return response.data;
+    } catch (error) {
+      console.error("Get ranking status error:", error);
+      return { neural_ranker_available: false, ranking_method: "rule_based" };
     }
   }
 

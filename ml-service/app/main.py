@@ -9,6 +9,7 @@ from fastapi.encoders import jsonable_encoder
 from app.models.embeddings import embedding_model
 import logging
 from app.services.embedding import EmbeddingService
+from app.services.ranking import get_ranking_service
 
 logging.basicConfig(
     level=logging.INFO,
@@ -34,6 +35,7 @@ app.add_middleware(
 # Initialize services
 embedding_service = EmbeddingService()
 recommendation_service = RecommendationService()
+ranking_service = get_ranking_service(use_neural=True)
 
 
 class EmbeddingRequest(BaseModel):
@@ -80,6 +82,16 @@ class ColdStartFromPostsRequest(BaseModel):
 
 class ColdStartFromTagsRequest(BaseModel):
     interest_tags: List[str]
+
+class NeuralRankRequest(BaseModel):
+    user_vector: List[float]
+    user_interests: List[str]
+    candidate_posts: List[dict]
+    limit: int = 20
+
+class RankingStatusResponse(BaseModel):
+    neural_ranker_available: bool
+    ranking_method: str
 
 
 @app.post("/api/embeddings/generate")
@@ -350,6 +362,69 @@ async def cold_start_from_tags(request: ColdStartFromTagsRequest):
         logger.error(f"Cold start from tags failed: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/ranking/neural-rank")
+async def neural_rank_posts(request: NeuralRankRequest):
+    """
+    Rank posts using neural ranking model
+    
+    Example:
+    POST /api/ranking/neural-rank
+    {
+        "user_vector": [...],
+        "user_interests": ["javascript", "react"],
+        "candidate_posts": [...],
+        "limit": 20
+    }
+    """
+    try:
+        ranked_posts = ranking_service.rank_posts_for_user(
+            user_vector=request.user_vector,
+            user_interests=request.user_interests,
+            candidate_posts=request.candidate_posts,
+            limit=request.limit
+        )
+        
+        return {
+            "posts": ranked_posts,
+            "count": len(ranked_posts),
+            "ranking_method": "neural" if ranking_service.is_neural_ranker_available() else "rule_based"
+        }
+    except Exception as e:
+        logger.error(f"Neural ranking failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/ranking/status", response_model=RankingStatusResponse)
+async def get_ranking_status():
+    """
+    Get status of ranking service
+    
+    Returns information about whether neural ranker is available
+    """
+    is_available = ranking_service.is_neural_ranker_available()
+    
+    return {
+        "neural_ranker_available": is_available,
+        "ranking_method": "neural" if is_available else "rule_based"
+    }
+
+@app.post("/api/ranking/switch-method")
+async def switch_ranking_method(use_neural: bool = True):
+    """
+    Switch between neural and rule-based ranking
+    
+    Example:
+    POST /api/ranking/switch-method?use_neural=true
+    """
+    if use_neural:
+        success = ranking_service.switch_to_neural()
+        if success:
+            return {"message": "Switched to neural ranking", "method": "neural"}
+        else:
+            return {"message": "Neural ranker not available, using rule-based", "method": "rule_based"}
+    else:
+        ranking_service.switch_to_rule_based()
+        return {"message": "Switched to rule-based ranking", "method": "rule_based"}
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
@@ -357,7 +432,14 @@ async def startup_event():
     logger.info("📊 Loading TensorFlow model...")
     try:
         _ = embedding_service.generate_embedding("warm up test")
-        logger.info("✅ Model loaded successfully")
+        logger.info("✅ Embedding model loaded successfully")
+        
+        # Check neural ranker status
+        if ranking_service.is_neural_ranker_available():
+            logger.info("✅ Neural ranking model loaded successfully")
+        else:
+            logger.warning("⚠️  Neural ranker not available, using rule-based ranking")
+            
     except Exception as e:
         logger.error(f"❌ Model loading failed: {str(e)}")
         raise
