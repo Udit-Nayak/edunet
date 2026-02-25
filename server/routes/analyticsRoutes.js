@@ -4,7 +4,8 @@ const {
   trackInteraction,
   getMyInteractions,
   getPostAnalytics,
-  getMLProfile
+  getMLProfile,
+  regenerateUserVector
 } = require('../controllers/analyticsController');
 const { protect } = require('../middleware/authMiddleware');
 
@@ -28,5 +29,6 @@ router.get('/post/:postId', getPostAnalytics);
 
 // Get user's ML profile data
 router.get('/ml-profile', getMLProfile);
+router.post('/regenerate-user-vector', regenerateUserVector);
 
 module.exports = router;

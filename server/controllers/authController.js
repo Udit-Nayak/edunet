@@ -232,6 +232,12 @@ exports.updateProfile = async (req, res) => {
       });
     }
 
+    // Track if interests are being set for the first time
+    const isFirstTimeSettingInterests = 
+      (!user.interests || user.interests.length === 0) && 
+      interests && 
+      interests.length > 0;
+
     // Update fields
     if (bio !== undefined) user.bio = bio;
     if (college !== undefined) user.college = college;
@@ -239,6 +245,30 @@ exports.updateProfile = async (req, res) => {
     if (interests !== undefined) user.interests = interests;
 
     await user.save();
+
+    // Initialize user vector for new users with interests
+    if (isFirstTimeSettingInterests) {
+      console.log(`🎯 Initializing ML vector for new user: ${user.username}`);
+      
+      // Generate cold start vector in background
+      const mlService = require('../services/mlService');
+      mlService.getColdStartVector(interests, user._id)
+        .then(async (vector) => {
+          if (vector) {
+            await User.findByIdAndUpdate(user._id, {
+              $set: {
+                'mlProfile.embedding': vector,
+                'mlProfile.lastUpdated': new Date(),
+                'mlProfile.interests': interests,
+              },
+            });
+            console.log(`✅ ML vector initialized for ${user.username}`);
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to initialize user vector:', err);
+        });
+    }
 
     // Clear cache
     await cacheService.del(`user:${user._id}`);

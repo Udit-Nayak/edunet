@@ -20,6 +20,8 @@ const {
 } = require('../controllers/postController');
 const { protect } = require('../middleware/authMiddleware');
 const mlService = require('../services/mlService');
+const { getPersonalizedFeed, semanticSearch } = require('../controllers/personalizedFeedController');
+
 
 
 const optionalAuth = async (req, res, next) => {
@@ -71,6 +73,10 @@ router.delete('/:id', protect, deletePost);
 router.post('/:id/upvote', protect, upvotePost);
 router.post('/:id/downvote', protect, downvotePost);
 router.post('/:id/save', protect, savePost);
+
+
+router.get('/personalized-feed', protect, getPersonalizedFeed);
+router.post('/semantic-search', semanticSearch);
 
 router.post('/semantic-search', protect, async (req, res) => {
   try {

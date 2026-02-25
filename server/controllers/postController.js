@@ -5,8 +5,7 @@ const cacheService = require("../services/cacheService");
 const storageService = require("../services/storageService");
 const reputationService = require("../services/reputationService");
 const notificationService = require("../services/notificationService");
-const mlService = require('../services/mlService');
-
+const mlService = require("../services/mlService");
 
 const clearSearchCaches = async () => {
   try {
@@ -84,9 +83,13 @@ exports.createPost = async (req, res) => {
     });
 
     await post.populate("authorId", "username avatar reputation");
+    if (status === "published") {
+  generateEmbeddingAsync(post._id, title, content, tags || []).catch(
+    (err) => console.error("Embedding generation failed:", err),
+  );
+}
 
     await cacheService.delPattern("posts:*");
-    // Clear search caches when new post is created
     await clearSearchCaches();
 
     const userPostCount = await Post.countDocuments({
@@ -112,6 +115,31 @@ exports.createPost = async (req, res) => {
     });
   }
 };
+
+async function generateEmbeddingAsync(postId, title, content, tags) {
+  try {
+    console.log(`🔄 Generating embedding for post ${postId}...`);
+    
+    const embedding = await mlService.generatePostEmbedding(title, content, tags);
+
+    if (embedding) {
+      await Post.findByIdAndUpdate(postId, {
+        $set: {
+          "mlMetadata.embedding": embedding,
+          "mlMetadata.lastEmbeddingUpdate": new Date(),
+        },
+      });
+      console.log(`✅ Embedding generated for post ${postId}`);
+    } else {
+      console.error(`❌ Failed to generate embedding for post ${postId}`);
+    }
+  } catch (error) {
+    console.error(
+      `❌ Embedding generation failed for post ${postId}:`,
+      error.message,
+    );
+  }
+}
 
 // @route   GET /api/posts
 exports.getPosts = async (req, res) => {
@@ -201,7 +229,7 @@ exports.getPosts = async (req, res) => {
 exports.getPostById = async (req, res) => {
   try {
     const { id } = req.params;
-    const { incrementView } = req.query; // Add this parameter
+    const { incrementView } = req.query;
 
     const cacheKey = `post:${id}`;
     const cachedPost = await cacheService.get(cacheKey);
@@ -279,7 +307,8 @@ exports.getPostById = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      post: postData,similarPosts,
+      post: postData,
+      similarPosts,
     });
   } catch (error) {
     console.error("Get post by ID error:", error);
@@ -290,6 +319,88 @@ exports.getPostById = async (req, res) => {
     });
   }
 };
+
+async function getSimilarLivePosts(postId, limit = 5) {
+  try {
+    const cacheKey = `embedding:post:${postId}`;
+
+    // 1️⃣ Try cache first
+    let embedding = await cacheService.get(cacheKey);
+
+    if (!embedding) {
+      // 2️⃣ Fallback to DB
+      const post = await Post.findById(postId).select("mlMetadata.embedding");
+
+      if (!post || !post.mlMetadata?.embedding) {
+        return [];
+      }
+
+      embedding = post.mlMetadata.embedding;
+
+      // 3️⃣ Cache for 7 days
+      await cacheService.set(cacheKey, embedding, 60 * 60 * 24 * 7);
+    }
+
+    // 4️⃣ Similarity search
+    const similarPosts = await Post.aggregate([
+      {
+        $match: {
+          _id: { $ne: new mongoose.Types.ObjectId(postId) },
+          status: "published",
+          "mlMetadata.embedding": { $exists: true, $ne: null },
+        },
+      },
+      {
+        $addFields: {
+          similarity: {
+            $reduce: {
+              input: { $range: [0, embedding.length] },
+              initialValue: 0,
+              in: {
+                $add: [
+                  "$$value",
+                  {
+                    $multiply: [
+                      { $arrayElemAt: ["$mlMetadata.embedding", "$$this"] },
+                      { $arrayElemAt: [embedding, "$$this"] },
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+        },
+      },
+      { $sort: { similarity: -1 } },
+      { $limit: limit },
+      {
+        $lookup: {
+          from: "users",
+          localField: "authorId",
+          foreignField: "_id",
+          as: "authorId",
+        },
+      },
+      { $unwind: "$authorId" },
+      {
+        $project: {
+          title: 1,
+          type: 1,
+          tags: 1,
+          createdAt: 1,
+          "authorId.username": 1,
+          "authorId.avatar": 1,
+          similarity: 1,
+        },
+      },
+    ]);
+
+    return similarPosts;
+  } catch (error) {
+    console.error("Similar posts error:", error);
+    return [];
+  }
+}
 
 // @route   PUT /api/posts/:id
 exports.updatePost = async (req, res) => {
@@ -386,7 +497,7 @@ exports.deletePost = async (req, res) => {
         }
       }
     }
-    
+
     await Answer.deleteMany({ postId: id });
     await post.deleteOne();
 

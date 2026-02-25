@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 const Interaction = require("../models/Interaction");
 const User = require("../models/User");
 const Post = require("../models/Post");
+const mlService = require('../services/mlService');
+
 
 /**
  * @route   POST /api/analytics/track-interaction
@@ -76,6 +78,12 @@ exports.trackInteraction = async (req, res) => {
     updateUserHistory(userId, postId, action, metadata).catch((err) => {
       console.error("Error updating user history:", err);
     });
+    if (['upvote', 'save', 'answer'].includes(action)) {
+  // Schedule background update
+  scheduleUserVectorUpdate(userId).catch(err => {
+    console.error('Failed to schedule user vector update:', err);
+  });
+}
 
     // Update post metrics asynchronously
     updatePostMetrics(postId, action, metadata).catch((err) => {
@@ -98,6 +106,17 @@ exports.trackInteraction = async (req, res) => {
     });
   }
 };
+
+async function scheduleUserVectorUpdate(userId) {
+  // Update user vector in background after significant interactions
+  setTimeout(async () => {
+    try {
+      await mlService.updateUserVectorBackground(userId);
+    } catch (error) {
+      console.error('Background user vector update failed:', error);
+    }
+  }, 5000); // 5 second delay
+}
 
 /**
  * @route   GET /api/analytics/my-interactions
@@ -507,5 +526,51 @@ async function calculateTopTags(userId) {
     return [];
   }
 }
+
+/**
+ * @route   POST /api/analytics/regenerate-user-vector
+ * @desc    Manually regenerate user's interest vector
+ * @access  Private
+ */
+exports.regenerateUserVector = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    console.log(`🔄 Regenerating user vector for ${req.user.username}...`);
+
+    const userVector = await mlService.computeUserVector(userId);
+
+    if (!userVector) {
+      return res.status(400).json({
+        success: false,
+        message: 'Could not generate user vector. You may need more interactions.',
+      });
+    }
+
+    // Update user profile
+    await User.findByIdAndUpdate(userId, {
+      $set: {
+        'mlProfile.embedding': userVector,
+        'mlProfile.lastUpdated': new Date(),
+      },
+    });
+
+    console.log(`✅ User vector regenerated for ${req.user.username}`);
+
+    res.status(200).json({
+      success: true,
+      message: 'User vector regenerated successfully',
+      vectorDimension: userVector.length,
+    });
+  } catch (error) {
+    console.error('Regenerate user vector error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error regenerating user vector',
+      error: error.message,
+    });
+  }
+};
+
 
 module.exports = exports;

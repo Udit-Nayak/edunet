@@ -1,37 +1,62 @@
-from app.models.embeddings import embedding_model
-from app.utils.mongodb import mongodb
-from typing import List, Dict
+"""
+Recommendation Service
+Provides ML-powered post recommendations and search
+"""
+
+from typing import List, Optional
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RecommendationService:
-    def get_similar_posts(self, post_id:int, limit:int=10)-> List[Dict]:
-        post=mongodb.get_post_by_id(post_id)
-        if not post or not post.get('embedding'):
-            return []
-
-        similar =mongodb.find_similar_posts(
-            post['embedding'],
-            limit=limit+1
-        )
-
-        similar =[p for p in similar if p['post_id']!= post_id]
-        return similar[:limit]
+    def __init__(self):
+        """Initialize recommendation service"""
+        # Will connect to MongoDB in production
+        # For now, we'll return mock data
+        pass
     
-    def search_by_text(self, query:str, limit:int=10)-> List[Dict]:
-        embedding=embedding_model.encode_single(query)
-        similar =mongodb.find_similar_posts(
-            embedding,
-            limit=limit
-        )
-        return similar
+    async def get_similar_posts(self, post_id: str, limit: int = 10) -> List[dict]:
+        """
+        Get posts similar to the given post
+        Uses cosine similarity on embeddings
+        
+        This is a placeholder - in production, this would:
+        1. Get post embedding from MongoDB
+        2. Find similar posts using vector similarity
+        3. Return top N results
+        """
+        # TODO: Implement with MongoDB connection
+        logger.info(f"Getting similar posts for {post_id}")
+        return []
     
-    def get_recommendations_for_user(self, user_id:str, user_tags:List[str],limit:int=10)->List[Dict]:
-
-        posts=list(mongodb.posts.find(
-            {
-                'tags': {'$in': user_tags}},
-                {'post_id':1, 'title':1, 'tags':1, 'score':1}).sort('score', -1).limit(limit))
-            
-        return posts
+    async def search_posts(self, query_embedding: List[float], limit: int = 10) -> List[dict]:
+        """
+        Semantic search for posts using query embedding
+        
+        This is a placeholder - in production, this would:
+        1. Compare query embedding with all post embeddings
+        2. Rank by similarity
+        3. Return top N results
+        """
+        # TODO: Implement with MongoDB connection
+        logger.info(f"Searching posts with embedding")
+        return []
     
-
-recommendation_service=RecommendationService()
+    async def get_personalized_feed(
+        self,
+        user_id: str,
+        user_tags: List[str],
+        limit: int = 20
+    ) -> List[dict]:
+        """
+        Get personalized feed for user
+        
+        This is a placeholder - in production, this would:
+        1. Get user's interest vector
+        2. Find posts matching their interests
+        3. Filter by recency and engagement
+        4. Return personalized results
+        """
+        # TODO: Implement with MongoDB connection
+        logger.info(f"Getting personalized feed for user {user_id}")
+        return []
