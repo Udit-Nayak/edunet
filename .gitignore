@@ -63,3 +63,15 @@ coverage/
 .cache/
 temp/
 tmp/
+ml-service/app/models/cf_mappings_20260226_044948.pkl
+ml-service/app/models/cf_mappings_20260226_045308.pkl
+ml-service/app/models/cf_mappings.pkl
+ml-service/app/models/collaborative_filter_20260226_044948.h5
+ml-service/app/models/collaborative_filter_20260226_045308.h5
+ml-service/app/models/collaborative_filter.h5
+ml-service/app/models/tag_classes_20260226_043119.pkl
+ml-service/app/models/tag_classes.pkl
+ml-service/app/models/tag_classifier_20260226_043119.h5
+ml-service/app/models/tag_classifier.h5
+ml-service/models/ann_index/ann_index.pkl
+ml-service/models/ann_index/sklearn_index.pkl
