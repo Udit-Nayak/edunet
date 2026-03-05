@@ -1,0 +1,20 @@
+Training Data Summary
+=====================
+
+Batch ID: 20260306_012542
+Generated: 2026-03-06 01:25:42.128501
+Days lookback: 7
+
+Total examples: 11
+Positive examples: 11 (100.0%)
+Negative examples: 0 (0.0%)
+
+User embedding dim: 512
+Post embedding dim: 512
+User features: reputation, postCount, numInterests
+Post features: upvotes, viewCount, numTags, ageHours
+
+Event Type Distribution:
+   impression: 7 (63.6%)
+   click: 3 (27.3%)
+   upvote: 1 (9.1%)

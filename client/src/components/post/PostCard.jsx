@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useRef } from "react";
 import { useAuth } from "../../hooks/useAuth";
-import { useInteractionTracking, useViewportTracking } from "../../hooks/useInteractionTracking";
+import { useInteractionTracking, useViewportTracking, useListItemTracking } from "../../hooks/useInteractionTracking";
 import { formatTimeAgo, formatNumber, truncateText } from "../../utils/formatters";
 import VoteButton from "./VoteButton";
 import { postAPI } from "../../services/api";
@@ -16,6 +16,13 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
   const { user } = useAuth();
   const cardRef = useRef(null);
   const { trackView, trackClick, trackTagClick } = useInteractionTracking();
+  
+  // Phase 9: Track impressions for continuous learning
+  useListItemTracking(post._id, position, {
+    source,
+    page: 'feed',
+    sortBy: source === 'feed' ? 'recommended' : undefined
+  });
   
   const [showMenu, setShowMenu] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);

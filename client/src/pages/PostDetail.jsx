@@ -14,7 +14,8 @@ import toast from "react-hot-toast";
 import ConfirmDialog from "../components/common/ConfirmDialog";
 import MediaViewer from "../components/common/MediaViewer";
 import SaveButton from "../components/post/SaveButton";
-import { useTimeTracking } from "../hooks/useInteractionTracking";
+import SimilarPosts from "../components/post/SimilarPosts";
+import { useTimeTracking, useLearningTracking } from "../hooks/useInteractionTracking";
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -26,9 +27,17 @@ export default function PostDetail() {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [mediaViewerOpen, setMediaViewerOpen] = useState(false);
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
+  
+  // Phase 8: Legacy time tracking
   if (user) {
     useTimeTracking(id, "detail");
   }
+  
+  // Phase 9: Continuous learning tracking
+  const { trackUpvote, trackDownvote, trackSave, trackUnsave, trackComment, trackAnswer } = useLearningTracking(
+    id,
+    { source: 'detail', trackClickOnMount: true, page: 'post-detail' }
+  );
 
   useEffect(() => {
     fetchPost();
@@ -86,7 +95,10 @@ export default function PostDetail() {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
-      <div className="max-w-4xl mx-auto px-4 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
         {/* Post Card */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="space-y-4">
@@ -246,6 +258,8 @@ export default function PostDetail() {
                 onUpvote={postAPI.upvotePost}
                 onDownvote={postAPI.downvotePost}
                 size="lg"
+                onUpvoteTracking={trackUpvote}
+                onDownvoteTracking={trackDownvote}
               />
 
               <SaveButton
@@ -256,6 +270,8 @@ export default function PostDetail() {
                 onSaveChange={(saved, count) => {
                   setPost({ ...post, isSaved: saved, saveCount: count });
                 }}
+                onSaveTracking={trackSave}
+                onUnsaveTracking={trackUnsave}
               />
 
               <div className="text-sm text-gray-600">
@@ -283,7 +299,16 @@ export default function PostDetail() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Your Answer
           </h3>
-          <AnswerForm postId={id} onAnswerCreated={fetchPost} />
+          <AnswerForm postId={id} onAnswerCreated={fetchPost} onAnswerTracking={trackAnswer} />
+        </div>
+          </div>
+
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-6">
+              <SimilarPosts postId={id} />
+            </div>
+          </div>
         </div>
       </div>
 

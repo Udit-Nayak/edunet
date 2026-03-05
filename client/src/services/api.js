@@ -49,6 +49,8 @@ export const postAPI = {
   getMyDrafts: () => API.get('/posts/drafts/my-drafts'),
   getDraftById: (id) => API.get(`/posts/drafts/${id}`),
   cleanupOldDrafts: () => API.delete('/posts/drafts/cleanup'),
+  getHybridFeed: (params) => API.get('/posts/hybrid-feed', { params }),
+  getSimilarPosts: (id, params) => API.get(`/posts/${id}/similar`, { params }),
 };
 
 export const answerAPI = {
@@ -85,6 +87,22 @@ export const searchAPI = {
   getTrending: () => API.get('/search/trending'),
   getPopularTags: (limit = 20) => API.get('/search/popular-tags', { params: { limit } }),
   trackSearch: (query) => API.post('/search/track', { query }),
+};
+
+// Phase 9: Continuous Learning API
+export const learningAPI = {
+  // Interaction tracking
+  recordInteraction: (data) => API.post('/learning/interactions', data),
+  recordBatchInteractions: (interactions) => API.post('/learning/interactions/batch', { interactions }),
+  getUserEngagementMetrics: (days) => API.get('/learning/interactions/user/metrics', { params: { days } }),
+  getPostPerformanceMetrics: (postId, days) => API.get(`/learning/interactions/post/${postId}/metrics`, { params: { days } }),
+  
+  // A/B testing
+  getModelAssignment: () => API.get('/learning/ab-test/assignment'),
+  getABTestStatus: () => API.get('/learning/ab-test/status'),
+  
+  // Training data stats (admin)
+  getTrainingStats: (days) => API.get('/learning/training/stats', { params: { days } })
 };
 
 

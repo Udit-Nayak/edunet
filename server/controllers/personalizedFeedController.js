@@ -87,7 +87,77 @@ exports.semanticSearch = async (req, res) => {
   }
 };
 
+/**
+ * @route   GET /api/posts/hybrid-feed
+ * @desc    Get hybrid feed (Content + Collaborative + Trending)
+ * @access  Private
+ */
+exports.getHybridFeed = async (req, res) => {
+  try {
+    const { limit = 10, page = 1 } = req.query;
+    const userId = req.user._id;
+
+    console.log(`🎯 Generating hybrid feed for ${req.user.username} (page ${page})...`);
+
+    // Get hybrid recommendations with pagination
+    const result = await mlService.getHybridRecommendations(
+      userId.toString(),
+      parseInt(limit),
+      parseInt(page)
+    );
+
+    if (result.posts.length === 0 && parseInt(page) === 1) {
+      // Fallback to regular feed if ML fails on first page
+      const Post = require('../models/Post');
+      const fallbackPosts = await Post.find({ status: 'published' })
+        .sort({ createdAt: -1 })
+        .limit(parseInt(limit))
+        .populate('authorId', 'username avatar reputation')
+        .lean();
+
+      const total = await Post.countDocuments({ status: 'published' });
+
+      return res.status(200).json({
+        success: true,
+        posts: fallbackPosts,
+        hybrid: false,
+        message: 'Showing recent posts',
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / parseInt(limit)),
+          totalPosts: total,
+          limit: parseInt(limit),
+        },
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      posts: result.posts,
+      hybrid: true,
+      count: result.posts.length,
+      message: 'Content-based (60%) + Collaborative (30%) + Trending (10%)',
+      pagination: {
+        currentPage: parseInt(page),
+        totalPages: Math.ceil(result.total / parseInt(limit)),
+        totalPosts: result.total,
+        limit: parseInt(limit),
+      },
+    });
+
+    console.log(`✅ Hybrid feed generated: ${result.posts.length} posts (page ${page}/${Math.ceil(result.total / parseInt(limit))})`);
+  } catch (error) {
+    console.error('Hybrid feed error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error generating hybrid feed',
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   getPersonalizedFeed: exports.getPersonalizedFeed,
   semanticSearch: exports.semanticSearch,
+  getHybridFeed: exports.getHybridFeed,
 };

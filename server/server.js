@@ -39,6 +39,8 @@ app.use('/api/upload', trackActivity, require('./routes/uploadRoutes'));
 app.use('/api/notifications', trackActivity, require('./routes/notificationRoutes'));
 app.use('/api/search', trackActivity, require('./routes/searchRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
+app.use('/api/tags', require('./routes/tagRoutes'));
+app.use('/api/learning', trackActivity, require('./routes/learningRoutes')); // Phase 9: Continuous Learning
 
 
 

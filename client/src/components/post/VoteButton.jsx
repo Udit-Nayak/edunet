@@ -9,7 +9,9 @@ export default function VoteButton({
   userVote = null, // 'upvote', 'downvote', or null
   onUpvote,
   onDownvote,
-  size = 'md'
+  size = 'md',
+  onUpvoteTracking, // Phase 9: Tracking callback
+  onDownvoteTracking // Phase 9: Tracking callback
 }) {
   const [votes, setVotes] = useState(initialVotes);
   const [currentVote, setCurrentVote] = useState(userVote);
@@ -30,10 +32,14 @@ export default function VoteButton({
         // Change from downvote to upvote
         setVotes(votes + 2);
         setCurrentVote('upvote');
+        // Phase 9: Track upvote
+        if (onUpvoteTracking) onUpvoteTracking();
       } else {
         // Add upvote
         setVotes(votes + 1);
         setCurrentVote('upvote');
+        // Phase 9: Track upvote
+        if (onUpvoteTracking) onUpvoteTracking();
       }
     } catch {
       toast.error('Failed to vote');
@@ -57,10 +63,14 @@ export default function VoteButton({
         // Change from upvote to downvote
         setVotes(votes - 2);
         setCurrentVote('downvote');
+        // Phase 9: Track downvote
+        if (onDownvoteTracking) onDownvoteTracking();
       } else {
         // Add downvote
         setVotes(votes - 1);
         setCurrentVote('downvote');
+        // Phase 9: Track downvote
+        if (onDownvoteTracking) onDownvoteTracking();
       }
     } catch{
       toast.error('Failed to vote');

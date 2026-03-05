@@ -723,6 +723,490 @@ class MLService {
       console.error("Background user vector update error:", error);
     }
   }
+
+  // ==================== Tag Suggestion Methods ====================
+
+  /**
+   * Suggest tags for text using ML classifier
+   * @param {string} text - Title + content concatenated
+   * @param {number} threshold - Minimum confidence (default: 0.3)
+   * @param {number} top_k - Max suggestions (default: 5)
+   * @returns {Promise<Array>} - Array of {tag, confidence}
+   */
+  async suggestTags(text, threshold = 0.3, top_k = 5) {
+    try {
+      const response = await this.client.post('/api/tags/suggest', {
+        text,
+        threshold,
+        top_k
+      });
+
+      return response.data.suggestions || [];
+    } catch (error) {
+      console.error('Tag suggestion error:', error.message);
+      
+      if (error.response?.status === 503) {
+        throw new Error('Tag classifier not available');
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Get all available tags from classifier
+   * @returns {Promise<Object>} - {tags: [], count: number}
+   */
+  async getAllTags() {
+    try {
+      const response = await this.client.get('/api/tags/all');
+      
+      return {
+        tags: response.data.tags || [],
+        count: response.data.count || 0
+      };
+    } catch (error) {
+      console.error('Get all tags error:', error.message);
+      return { tags: [], count: 0 };
+    }
+  }
+
+  /**
+   * Get tag classifier status
+   * @returns {Promise<Object>} - Status information
+   */
+  async getTagStatus() {
+    try {
+      const response = await this.client.get('/api/tags/status');
+      
+      return {
+        tag_classifier_available: response.data.tag_classifier_available || false,
+        num_tags: response.data.num_tags || 0,
+        all_tags: response.data.all_tags || []
+      };
+    } catch (error) {
+      console.error('Get tag status error:', error.message);
+      return {
+        tag_classifier_available: false,
+        num_tags: 0,
+        all_tags: []
+      };
+    }
+  }
+
+  /**
+   * Reload tag classifier model
+   * @returns {Promise<Object>} - Reload result
+   */
+  async reloadTagModel() {
+    try {
+      const response = await this.client.post('/api/tags/reload');
+      
+      return {
+        message: response.data.message || 'Model reloaded',
+        num_tags: response.data.num_tags || 0
+      };
+    } catch (error) {
+      console.error('Reload tag model error:', error.message);
+      throw error;
+    }
+  }
+
+  // ==================== Collaborative Filtering Methods ====================
+
+  /**
+   * Get collaborative filtering recommendations
+   * @param {string} userId - User ID
+   * @param {Array<string>} candidatePostIds - Candidate post IDs
+   * @param {number} limit - Max recommendations
+   * @returns {Promise<Array>} - Array of {post_id, score}
+   */
+  async getCollaborativeRecommendations(userId, candidatePostIds, limit = 20) {
+    try {
+      const response = await this.client.post('/api/collaborative/recommend', {
+        user_id: userId,
+        candidate_post_ids: candidatePostIds,
+        limit
+      });
+
+      return response.data.recommendations || [];
+    } catch (error) {
+      console.error('Collaborative recommendations error:', error.message);
+      
+      if (error.response?.status === 503) {
+        throw new Error('Collaborative filter not available');
+      }
+      
+      throw error;
+    }
+  }
+
+  /**
+   * Find users with similar taste
+   * @param {string} userId - User ID
+   * @param {number} topK - Number of similar users
+   * @returns {Promise<Array>} - Array of {user_id, similarity}
+   */
+  async getSimilarUsers(userId, topK = 10) {
+    try {
+      const response = await this.client.post('/api/collaborative/similar-users', {
+        user_id: userId,
+        top_k: topK
+      });
+
+      return response.data.similar_users || [];
+    } catch (error) {
+      console.error('Similar users error:', error.message);
+      return [];
+    }
+  }
+
+  /**
+   * Get collaborative filter status
+   * @returns {Promise<Object>} - Status information
+   */
+  async getCollaborativeStatus() {
+    try {
+      const response = await this.client.get('/api/collaborative/status');
+      
+      return {
+        available: response.data.available || false,
+        num_users: response.data.num_users || 0,
+        num_posts: response.data.num_posts || 0,
+        embedding_dim: response.data.embedding_dim || 0
+      };
+    } catch (error) {
+      console.error('Get CF status error:', error.message);
+      return {
+        available: false,
+        num_users: 0,
+        num_posts: 0,
+        embedding_dim: 0
+      };
+    }
+  }
+
+  /**
+   * Reload collaborative filter model
+   * @returns {Promise<Object>} - Reload result
+   */
+  async reloadCollaborativeModel() {
+    try {
+      const response = await this.client.post('/api/collaborative/reload');
+      
+      return {
+        message: response.data.message || 'Model reloaded',
+        num_users: response.data.num_users || 0,
+        num_posts: response.data.num_posts || 0
+      };
+    } catch (error) {
+      console.error('Reload CF model error:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get hybrid recommendations (Content + Collaborative + Trending)
+   * @param {string} userId - User ID
+   * @param {number} limit - Total recommendations
+   * @returns {Promise<Array>} - Array of posts
+   */
+  async getHybridRecommendations(userId, limit = 20, page = 1) {
+    try {
+      // Get user profile
+      const user = await User.findById(userId).lean();
+      if (!user) {
+        return { posts: [], total: 0 };
+      }
+
+      // Generate a larger pool of personalized recommendations (first 200 posts)
+      const personalizedPoolSize = 200;
+      const skip = (page - 1) * limit;
+
+      // Get total count of all published posts (excluding user's own)
+      const totalPublishedPosts = await Post.countDocuments({
+        status: 'published',
+        authorId: { $ne: userId }
+      });
+
+      // If requesting beyond personalized pool, fall back to chronological
+      if (skip >= personalizedPoolSize) {
+        // Fetch chronological posts beyond the personalized pool
+        const fallbackPosts = await Post.find({
+          status: 'published',
+          authorId: { $ne: userId }
+        })
+          .sort({ createdAt: -1 })
+          .skip(skip - personalizedPoolSize)
+          .limit(limit)
+          .populate('authorId', 'username avatar reputation')
+          .lean();
+
+        return {
+          posts: fallbackPosts,
+          total: totalPublishedPosts
+        };
+      }
+
+      // Get candidates for personalized recommendations
+      const candidatePosts = await Post.find({
+        status: 'published',
+        authorId: { $ne: userId }
+      })
+        .sort({ createdAt: -1 })
+        .limit(500) // Larger candidate pool
+        .select('_id')
+        .lean();
+
+      const candidatePostIds = candidatePosts.map(p => p._id.toString());
+
+      if (candidatePostIds.length === 0) {
+        return { posts: [], total: 0 };
+      }
+
+      // Check if CF is available
+      const cfStatus = await this.getCollaborativeStatus();
+      
+      let contentBasedPosts = [];
+      let collaborativePosts = [];
+      let trendingPosts = [];
+
+      // 1. Content-based recommendations (60% of pool)
+      const contentLimit = Math.floor(personalizedPoolSize * 0.6);
+      try {
+        const contentRecs = await this.neuralRankPosts(
+          user.mlProfile?.embedding || [],
+          user.interests || [],
+          candidatePosts.map(p => ({ _id: p._id.toString() })),
+          contentLimit
+        );
+
+        if (contentRecs && Array.isArray(contentRecs)) {
+          contentBasedPosts = contentRecs.map(p => p.post_id || p._id);
+        }
+      } catch (error) {
+        console.error('Content-based recommendations failed:', error.message);
+      }
+
+      // 2. Collaborative filtering (30% of pool)
+      if (cfStatus.available) {
+        const collaborativeLimit = Math.floor(personalizedPoolSize * 0.3);
+        try {
+          // Filter out already recommended posts
+          const remainingCandidates = candidatePostIds.filter(
+            id => !contentBasedPosts.includes(id)
+          );
+
+          const cfRecs = await this.getCollaborativeRecommendations(
+            userId,
+            remainingCandidates,
+            collaborativeLimit
+          );
+
+          collaborativePosts = cfRecs.map(r => r.post_id);
+        } catch (error) {
+          console.error('Collaborative recommendations failed:', error.message);
+        }
+      }
+
+      // 3. Trending posts (10% of pool)
+      const trendingLimit = Math.floor(personalizedPoolSize * 0.1);
+      try {
+        const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+        const trending = await Post.find({
+          status: 'published',
+          authorId: { $ne: userId },
+          createdAt: { $gte: sevenDaysAgo },
+          _id: {
+            $nin: [
+              ...contentBasedPosts.map(id => new mongoose.Types.ObjectId(id)),
+              ...collaborativePosts.map(id => new mongoose.Types.ObjectId(id))
+            ]
+          }
+        })
+          .sort({ upvotes: -1, viewCount: -1 })
+          .limit(trendingLimit)
+          .select('_id')
+          .lean();
+
+        trendingPosts = trending.map(p => p._id.toString());
+      } catch (error) {
+        console.error('Trending posts failed:', error.message);
+      }
+
+      // Combine all recommendations
+      const allPostIds = [
+        ...contentBasedPosts,
+        ...collaborativePosts,
+        ...trendingPosts
+      ];
+
+      // Remove duplicates to get full pool
+      const uniquePostIds = [...new Set(allPostIds)];
+
+      // Apply pagination
+      const paginatedPostIds = uniquePostIds.slice(skip, skip + limit);
+
+      // Fetch full post details for the paginated posts
+      const posts = await Post.find({
+        _id: { $in: paginatedPostIds.map(id => new mongoose.Types.ObjectId(id)) }
+      })
+        .populate('authorId', 'username avatar reputation')
+        .lean();
+
+      // Sort posts in the order of recommendation
+      const sortedPosts = paginatedPostIds
+        .map(id => posts.find(p => p._id.toString() === id))
+        .filter(p => p !== undefined);
+
+      // Return total as all published posts (personalized pool + remaining posts)
+      return {
+        posts: sortedPosts,
+        total: totalPublishedPosts
+      };
+      
+    } catch (error) {
+      console.error('Hybrid recommendations error:', error);
+      return { posts: [], total: 0 };
+    }
+  }
+
+  // ========================================
+  // Phase 8: Fast Similarity Search (ANN)
+  // ========================================
+
+  /**
+   * Find similar posts using fast ANN index (Phase 8)
+   * ~50-100x faster than naive similarity search
+   * 
+   * @param {string} postId - Post ID to find similar posts for
+   * @param {number} limit - Number of similar posts to return
+   * @param {boolean} includeFullDetails - Whether to include full post details
+   * @returns {Promise<Array>} - Array of similar posts
+   */
+  async findSimilarPostsFast(postId, limit = 10, includeFullDetails = false) {
+    try {
+      if (!postId) {
+        throw new Error('Post ID is required');
+      }
+
+      const response = await this.client.post('/api/similarity/fast', {
+        post_id: postId,
+        limit: limit,
+        include_full_details: includeFullDetails
+      });
+
+      return {
+        queryPostId: response.data.query_post_id,
+        similarPosts: response.data.similar_posts || [],
+        count: response.data.count || 0,
+        method: response.data.method || 'ann_index',
+        speedup: response.data.speedup || '~50-100x faster'
+      };
+    } catch (error) {
+      if (error.response?.status === 503) {
+        console.warn('ANN index not available. Build it with: python -m app.training.build_ann_index');
+        throw new Error('Fast similarity search not available. ANN index not built.');
+      }
+      console.error('Fast similarity search error:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get ANN index status
+   * @returns {Promise<Object>} - Index status and statistics
+   */
+  async getANNIndexStatus() {
+    try {
+      const response = await this.client.get('/api/similarity/status');
+
+      return {
+        status: response.data.status || 'unknown',
+        annIndex: response.data.ann_index || null,
+        database: response.data.database || null,
+        performance: response.data.performance || null,
+        message: response.data.message || null
+      };
+    } catch (error) {
+      console.error('Get ANN status error:', error.message);
+      return {
+        status: 'error',
+        message: error.message
+      };
+    }
+  }
+
+  /**
+   * Reload ANN index (after rebuilding)
+   * @returns {Promise<Object>} - Reload result
+   */
+  async reloadANNIndex() {
+    try {
+      const response = await this.client.post('/api/similarity/reload');
+
+      return {
+        message: response.data.message || 'Index reloaded',
+        numPosts: response.data.num_posts || 0,
+        buildTime: response.data.build_time || null,
+        hint: response.data.hint || null
+      };
+    } catch (error) {
+      console.error('Reload ANN index error:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Get similar posts with full details from database
+   * Combines fast ANN search with MongoDB population
+   * 
+   * @param {string} postId - Post ID
+   * @param {number} limit - Number of similar posts
+   * @returns {Promise<Array>} - Array of populated posts
+   */
+  async getSimilarPostsWithDetails(postId, limit = 10) {
+    try {
+      // Use fast ANN search
+      const result = await this.findSimilarPostsFast(postId, limit, false);
+
+      if (!result.similarPosts || result.similarPosts.length === 0) {
+        return [];
+      }
+
+      // Extract post IDs
+      const postIds = result.similarPosts.map(p => p.post_id);
+
+      // Fetch full post details from database
+      const posts = await Post.find({
+        _id: { $in: postIds.map(id => new mongoose.Types.ObjectId(id)) }
+      })
+        .populate('authorId', 'username avatar reputation')
+        .lean();
+
+      // Merge with similarity scores
+      const postsWithSimilarity = postIds
+        .map(id => {
+          const post = posts.find(p => p._id.toString() === id);
+          const similarPost = result.similarPosts.find(s => s.post_id === id);
+          
+          if (post && similarPost) {
+            return {
+              ...post,
+              similarity: similarPost.similarity
+            };
+          }
+          return null;
+        })
+        .filter(p => p !== null);
+
+      return postsWithSimilarity;
+    } catch (error) {
+      console.error('Get similar posts with details error:', error);
+      return [];
+    }
+  }
 }
 
 module.exports = new MLService();

@@ -3,7 +3,7 @@ import { answerAPI } from '../../services/api';
 import RichTextEditor from '../post/RichTextEditor';
 import toast from 'react-hot-toast';
 
-export default function AnswerForm({ postId, onAnswerCreated }) {
+export default function AnswerForm({ postId, onAnswerCreated, onAnswerTracking }) {
   const [content, setContent] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -22,6 +22,8 @@ export default function AnswerForm({ postId, onAnswerCreated }) {
       toast.success('Answer posted!');
       setContent('');
       if (onAnswerCreated) onAnswerCreated();
+      // Phase 9: Track answer
+      if (onAnswerTracking) onAnswerTracking();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to post answer');
     } finally {

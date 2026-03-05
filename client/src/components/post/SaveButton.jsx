@@ -4,7 +4,7 @@ import { FaBookmark } from 'react-icons/fa';
 import { postAPI } from '../../services/api';
 import toast from 'react-hot-toast';
 
-export default function SaveButton({ postId, initialSaved = false, onSaveChange, showCount = false, saveCount = 0 }) {
+export default function SaveButton({ postId, initialSaved = false, onSaveChange, showCount = false, saveCount = 0, onSaveTracking, onUnsaveTracking }) {
   const [saved, setSaved] = useState(initialSaved);
   const [count, setCount] = useState(saveCount);
   const [loading, setLoading] = useState(false);
@@ -35,6 +35,13 @@ export default function SaveButton({ postId, initialSaved = false, onSaveChange,
 
       if (onSaveChange) {
         onSaveChange(newSaved, newCount);
+      }
+      
+      // Phase 9: Track save/unsave
+      if (newSaved && onSaveTracking) {
+        onSaveTracking();
+      } else if (!newSaved && onUnsaveTracking) {
+        onUnsaveTracking();
       }
 
       toast.success(newSaved ? 'Post saved!' : 'Post unsaved');

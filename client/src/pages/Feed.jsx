@@ -1,11 +1,11 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { postAPI } from "../services/api";
 import Navbar from "../components/common/Navbar";
 import PostCard from "../components/post/PostCard";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import ErrorMessage from "../components/common/ErrorMessage";
-import { FiFilter, FiTrendingUp, FiClock, FiStar } from "react-icons/fi";
+import { FiFilter, FiTrendingUp, FiClock, FiStar, FiZap } from "react-icons/fi";
 
 export default function Feed() {
   const [posts, setPosts] = useState([]);
@@ -13,18 +13,23 @@ export default function Feed() {
   const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     type: "all", // all, question, note, article
-    sortBy: "recent", // recent, popular, trending
+    sortBy: "recommended", // recommended, recent, popular, trending
   });
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const navigate = useNavigate();
+  const observer = useRef();
+  const lastPostElementRef = useRef();
 
   useEffect(() => {
+    setPosts([]);
+    setPage(1);
+    setHasMore(true);
     fetchPosts(1, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]);
 
-  const fetchPosts = async (pageNum, append = false) => {
+  const fetchPosts = useCallback(async (pageNum, append = false) => {
     try {
       setLoading(true);
       const params = {
@@ -37,7 +42,10 @@ export default function Feed() {
         params.type = filters.type;
       }
 
-      const response = await postAPI.getPosts(params);
+      // Use hybrid feed for recommended, otherwise use regular feed
+      const response = filters.sortBy === "recommended" 
+        ? await postAPI.getHybridFeed(params)
+        : await postAPI.getPosts(params);
       const newPosts = response.data.posts;
 
       if (append) {
@@ -57,13 +65,38 @@ export default function Feed() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
-  const loadMore = () => {
+  const loadMore = useCallback(() => {
     if (!loading && hasMore) {
       fetchPosts(page + 1, true);
     }
-  };
+  }, [loading, hasMore, page, fetchPosts]);
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    if (loading) return;
+    if (observer.current) observer.current.disconnect();
+
+    const callback = (entries) => {
+      if (entries[0].isIntersecting && hasMore) {
+        loadMore();
+      }
+    };
+
+    observer.current = new IntersectionObserver(callback, {
+      threshold: 0.1,
+      rootMargin: "100px", // Start loading 100px before reaching the element
+    });
+
+    if (lastPostElementRef.current) {
+      observer.current.observe(lastPostElementRef.current);
+    }
+
+    return () => {
+      if (observer.current) observer.current.disconnect();
+    };
+  }, [loading, hasMore, loadMore]);
 
   const handleFilterChange = (key, value) => {
     setFilters((prev) => ({ ...prev, [key]: value }));
@@ -81,6 +114,23 @@ export default function Feed() {
             Discover questions, notes, and articles from the community
           </p>
         </div>
+
+        {/* AI Recommendation Banner */}
+        {filters.sortBy === "recommended" && (
+          <div className="bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start space-x-3">
+              <FiZap className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                  AI-Powered Recommendations
+                </h3>
+                <p className="text-xs text-gray-600">
+                  Posts personalized for you using content-based analysis (60%), collaborative filtering (30%), and trending topics (10%)
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Filters */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
@@ -101,8 +151,19 @@ export default function Feed() {
             </div>
 
             {/* Sort Filter */}
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-2 flex-wrap">
               <span className="text-sm text-gray-600">Sort by:</span>
+              <button
+                onClick={() => handleFilterChange("sortBy", "recommended")}
+                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  filters.sortBy === "recommended"
+                    ? "bg-gradient-to-r from-primary-600 to-purple-600 text-white shadow-md"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
+              >
+                <FiZap className="w-4 h-4" />
+                <span>Recommended</span>
+              </button>
               <button
                 onClick={() => handleFilterChange("sortBy", "recent")}
                 className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -170,16 +231,24 @@ export default function Feed() {
                 />
               ))}
 
-              {/* Load More */}
+              {/* Infinite Scroll Sentinel & Loading Indicator */}
               {hasMore && (
-                <div className="text-center py-4">
-                  <button
-                    onClick={loadMore}
-                    disabled={loading}
-                    className="btn-secondary"
-                  >
-                    {loading ? "Loading..." : "Load More"}
-                  </button>
+                <div ref={lastPostElementRef} className="text-center py-8">
+                  {loading && (
+                    <div className="flex flex-col items-center space-y-2">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                      <p className="text-sm text-gray-500">Loading more posts...</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* End of Feed Message */}
+              {!hasMore && posts.length > 0 && (
+                <div className="text-center py-8 border-t border-gray-200">
+                  <p className="text-gray-500 text-sm">
+                    🎉 You've reached the end! No more posts to show.
+                  </p>
                 </div>
               )}
             </>

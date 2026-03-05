@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+client/node_modules/
+server/node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+ml-service/venv/
+*.egg-info/
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+*.env
+server/.env
+ml-service/.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build outputs
+client/dist/
+client/build/
+server/dist/
+
+# ML models and data (large files)
+ml-service/models/*.h5
+ml-service/models/*.pkl
+ml-service/data/training/*.pkl
+ml-service/data/processed/*.pkl
+!ml-service/models/.gitkeep
+!ml-service/data/training/.gitkeep
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Misc
+.cache/
+temp/
+tmp/

@@ -1,4 +1,4 @@
-import { useState  } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { postAPI } from '../services/api';
 import Navbar from '../components/common/Navbar';
@@ -7,7 +7,8 @@ import TagInput from '../components/post/TagInput';
 import FileUpload from '../components/common/FileUpload';
 import DraftsList from '../components/post/DraftsList';
 import toast from 'react-hot-toast';
-import { FiX, FiFile , FiAlertCircle } from 'react-icons/fi';
+import { FiX, FiFile , FiAlertCircle, FiZap } from 'react-icons/fi';
+import axios from 'axios';
 
 export default function CreatePost() {
   const [formData, setFormData] = useState({
@@ -19,11 +20,66 @@ export default function CreatePost() {
     status: 'published',
   });
   const [loading, setLoading] = useState(false);
-    const [loadedDraftId, setLoadedDraftId] = useState(null);
+  const [loadedDraftId, setLoadedDraftId] = useState(null);
+  const [tagSuggestions, setTagSuggestions] = useState([]);
+  const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (field, value) => {
     setFormData({ ...formData, [field]: value });
+  };
+
+  // Fetch tag suggestions with debouncing
+  const fetchTagSuggestions = useCallback(async () => {
+    const text = `${formData.title} ${formData.content.replace(/<[^>]*>/g, '')}`.trim();
+    
+    // Only fetch if we have enough text
+    if (text.length < 20) {
+      setTagSuggestions([]);
+      return;
+    }
+
+    setLoadingSuggestions(true);
+    
+    try {
+      const response = await axios.post('/api/tags/suggest', {
+        text,
+        threshold: 0.3,
+        top_k: 5
+      });
+
+      if (response.data.success && response.data.suggestions) {
+        // Filter out already selected tags
+        const suggestions = response.data.suggestions.filter(
+          s => !formData.tags.includes(s.tag)
+        );
+        setTagSuggestions(suggestions);
+      }
+    } catch (error) {
+      // Silently fail - tag suggestions are optional
+      if (error.response?.status !== 503) {
+        console.error('Tag suggestion error:', error);
+      }
+      setTagSuggestions([]);
+    } finally {
+      setLoadingSuggestions(false);
+    }
+  }, [formData.title, formData.content, formData.tags]);
+
+  // Debounced tag suggestion fetching
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchTagSuggestions();
+    }, 800); // 800ms debounce
+
+    return () => clearTimeout(timer);
+  }, [fetchTagSuggestions]);
+
+  // Add suggested tag
+  const addSuggestedTag = (tag) => {
+    if (!formData.tags.includes(tag) && formData.tags.length < 10) {
+      handleChange('tags', [...formData.tags, tag]);
+    }
   };
 
   const handleFileUpload = (uploadedFiles) => {
@@ -331,6 +387,50 @@ export default function CreatePost() {
               onChange={(tags) => handleChange('tags', tags)}
               maxTags={10}
             />
+
+            {/* AI Tag Suggestions */}
+            {(tagSuggestions.length > 0 || loadingSuggestions) && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <div className="flex items-center space-x-2 mb-2">
+                  <FiZap className="w-4 h-4 text-primary-600" />
+                  <span className="text-sm font-medium text-gray-700">
+                    AI Suggested Tags
+                  </span>
+                  {loadingSuggestions && (
+                    <span className="text-xs text-gray-500">Loading...</span>
+                  )}
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {tagSuggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => addSuggestedTag(suggestion.tag)}
+                      disabled={formData.tags.includes(suggestion.tag) || formData.tags.length >= 10}
+                      className={`
+                        inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium
+                        transition-all duration-200
+                        ${formData.tags.includes(suggestion.tag)
+                          ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                          : 'bg-primary-50 text-primary-700 hover:bg-primary-100 border-2 border-primary-200 hover:border-primary-300'
+                        }
+                      `}
+                    >
+                      <FiZap className="w-3 h-3 mr-1" />
+                      {suggestion.tag}
+                      <span className="ml-1.5 text-xs opacity-75">
+                        {Math.round(suggestion.confidence * 100)}%
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                
+                <p className="text-xs text-gray-500 mt-2">
+                  Click on a suggested tag to add it to your post
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Actions */}

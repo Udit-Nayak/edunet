@@ -16,11 +16,11 @@ const {
   getMyDrafts,
   getDraftById,
   cleanupOldDrafts,
-
+  getSimilarPosts,
 } = require('../controllers/postController');
 const { protect } = require('../middleware/authMiddleware');
 const mlService = require('../services/mlService');
-const { getPersonalizedFeed, semanticSearch } = require('../controllers/personalizedFeedController');
+const { getPersonalizedFeed, semanticSearch, getHybridFeed } = require('../controllers/personalizedFeedController');
 
 
 
@@ -57,13 +57,18 @@ const optionalAuth = async (req, res, next) => {
 router.get('/',optionalAuth ,getPosts);
 router.get('/tag/:tag',optionalAuth, getPostsByTag);
 router.get('/user/:userId',optionalAuth, getUserPosts);
+
+// Specific routes - MUST come before /:id to avoid being caught by it
+router.get('/personalized-feed', protect, getPersonalizedFeed);
+router.get('/hybrid-feed', protect, getHybridFeed);
 router.get('/drafts/my-drafts', protect, getMyDrafts);
 router.get('/drafts/:id', protect, getDraftById);
 router.delete('/drafts/cleanup', protect, cleanupOldDrafts);
 
-// Protected routes - IMPORTANT: Put specific routes BEFORE dynamic :id route
+// Protected routes with :id - Put sub-routes BEFORE the base :id route
 router.get('/saved', protect, getSavedPosts); 
 router.get('/:id/is-saved', protect, checkPostSaved);
+router.get('/:id/similar', optionalAuth, getSimilarPosts); // Phase 8: Similar posts
 router.get('/:id',optionalAuth, getPostById);
 
 // Other protected routes
@@ -74,31 +79,6 @@ router.post('/:id/upvote', protect, upvotePost);
 router.post('/:id/downvote', protect, downvotePost);
 router.post('/:id/save', protect, savePost);
 
-
-router.get('/personalized-feed', protect, getPersonalizedFeed);
 router.post('/semantic-search', semanticSearch);
 
-router.post('/semantic-search', protect, async (req, res) => {
-  try {
-    const { query, limit = 10 } = req.body;
-    
-    // Get results from ML service
-    const mlResults = await mlService.searchPosts(query, limit);
-    
-    // Get full post details from MongoDB
-    const postIds = mlResults.map(r => r.post_id);
-    const posts = await Post.find({ post_id: { $in: postIds } });
-    
-    res.status(200).json({
-      success: true,
-      posts
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Semantic search failed',
-      error: error.message
-    });
-  }
-});
 module.exports = router;
