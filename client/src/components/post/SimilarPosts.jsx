@@ -75,7 +75,7 @@ export default function SimilarPosts({ postId }) {
         {similarPosts.map((post) => (
           <Link
             key={post._id}
-            to={`/posts/${post._id}`}
+            to={`/post/${post._id}`}
             className="block group"
           >
             <div className="border border-gray-200 rounded-lg p-4 hover:border-primary-400 hover:bg-primary-50 transition-all duration-200">

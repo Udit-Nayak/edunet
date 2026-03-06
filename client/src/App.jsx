@@ -15,6 +15,7 @@ import ProfileSetup from './pages/ProfileSetup';
 import Dashboard from './pages/Dashboard';
 import EditProfile from './pages/EditProfile';
 import Feed from './pages/Feed';
+import PersonalizedFeed from './pages/PersonalizedFeed';
 import CreatePost from './pages/CreatePost';
 import EditPost from './pages/EditPost';
 import PostDetail from './pages/PostDetail';
@@ -220,6 +221,7 @@ function AppContent() {
 
         {/* Protected Routes */}
         <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
+        <Route path="/personalized" element={<ProtectedRoute><PersonalizedFeed /></ProtectedRoute>} />
         <Route path="/create-post" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
         <Route path="/post/:id/edit" element={<ProtectedRoute><EditPost /></ProtectedRoute>} />
         <Route path="/post/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />

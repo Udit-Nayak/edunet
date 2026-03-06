@@ -345,7 +345,7 @@ async function updateUserHistory(userId, postId, action, metadata) {
     // Update viewed posts
     if (action === "view") {
       const existingView = user.userInteractions.viewedPosts.find(
-        (v) => v.postId.toString() === postId.toString(),
+        (v) => v.postId && v.postId.toString() === postId.toString(),
       );
 
       if (existingView) {
@@ -375,7 +375,7 @@ async function updateUserHistory(userId, postId, action, metadata) {
     // Update upvoted posts
     if (action === "upvote") {
       const alreadyUpvoted = user.userInteractions.upvotedPosts.some(
-        (v) => v.postId.toString() === postId.toString(),
+        (v) => v.postId && v.postId.toString() === postId.toString(),
       );
 
       if (!alreadyUpvoted) {
@@ -389,7 +389,7 @@ async function updateUserHistory(userId, postId, action, metadata) {
     // Update downvoted posts
     if (action === "downvote") {
       const alreadyDownvoted = user.userInteractions.downvotedPosts.some(
-        (v) => v.postId.toString() === postId.toString(),
+        (v) => v.postId && v.postId.toString() === postId.toString(),
       );
 
       if (!alreadyDownvoted) {

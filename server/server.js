@@ -41,6 +41,7 @@ app.use('/api/search', trackActivity, require('./routes/searchRoutes'));
 app.use('/api/analytics', require('./routes/analyticsRoutes'));
 app.use('/api/tags', require('./routes/tagRoutes'));
 app.use('/api/learning', trackActivity, require('./routes/learningRoutes')); // Phase 9: Continuous Learning
+app.use('/api/ml', require('./routes/mlRoutes')); // Phase 10: ML Service Integration
 
 
 

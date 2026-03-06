@@ -42,25 +42,43 @@ export default function CreatePost() {
     setLoadingSuggestions(true);
     
     try {
-      const response = await axios.post('/api/tags/suggest', {
-        text,
-        threshold: 0.3,
-        top_k: 5
+      // Phase 10/11: Use ML service for tag suggestions
+      const response = await axios.post('/api/ml/tags/suggest', {
+        text
       });
 
-      if (response.data.success && response.data.suggestions) {
+      if (response.data.success && response.data.suggested_tags) {
         // Filter out already selected tags
-        const suggestions = response.data.suggestions.filter(
-          s => !formData.tags.includes(s.tag)
-        );
+        const suggestions = response.data.suggested_tags
+          .filter(tag => !formData.tags.includes(tag))
+          .map(tag => ({
+            tag: tag,
+            confidence: 1.0 // ML endpoint returns simple tag list
+          }));
         setTagSuggestions(suggestions);
       }
-    } catch (error) {
-      // Silently fail - tag suggestions are optional
-      if (error.response?.status !== 503) {
-        console.error('Tag suggestion error:', error);
+    } catch (mlError) {
+      // Fallback to regular tag suggestions if ML service unavailable
+      try {
+        const response = await axios.post('/api/tags/suggest', {
+          text,
+          threshold: 0.3,
+          top_k: 5
+        });
+
+        if (response.data.success && response.data.suggestions) {
+          const suggestions = response.data.suggestions.filter(
+            s => !formData.tags.includes(s.tag)
+          );
+          setTagSuggestions(suggestions);
+        }
+      } catch (error) {
+        // Silently fail - tag suggestions are optional
+        if (error.response?.status !== 503) {
+          console.error('Tag suggestion error:', error);
+        }
+        setTagSuggestions([]);
       }
-      setTagSuggestions([]);
     } finally {
       setLoadingSuggestions(false);
     }

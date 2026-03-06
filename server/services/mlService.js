@@ -1201,10 +1201,66 @@ class MLService {
         })
         .filter(p => p !== null);
 
-      return postsWithSimilarity;
+      // Deduplicate by title to prevent showing same posts by different users
+      const uniquePosts = [];
+      const seenTitles = new Set();
+      
+      for (const post of postsWithSimilarity) {
+        const normalizedTitle = post.title.toLowerCase().trim();
+        if (!seenTitles.has(normalizedTitle)) {
+          seenTitles.add(normalizedTitle);
+          uniquePosts.push(post);
+        }
+      }
+
+      return uniquePosts;
     } catch (error) {
       console.error('Get similar posts with details error:', error);
       return [];
+    }
+  }
+
+  // ========================================
+  // Phase 10: Production Integration Methods
+  // ========================================
+
+  /**
+   * Track user interaction for model training (Phase 10)
+   */
+  async trackInteraction(userId, postId, action, metadata = {}) {
+    try {
+      // Send asynchronously (fire and forget)
+      axios.post(
+        `${ML_SERVICE_URL}/track/interaction`,
+        {
+          user_id: userId,
+          post_id: postId,
+          action,
+          metadata,
+          timestamp: new Date().toISOString()
+        },
+        { timeout: 2000 }
+      ).catch(() => {}); // Ignore errors
+      
+      return true;
+    } catch (error) {
+      // Don't throw - tracking shouldn't block main flow
+      return false;
+    }
+  }
+
+  /**
+   * Health check (Phase 10 - wrapper around checkHealth for compatibility)
+   */
+  async healthCheck() {
+    try {
+      const response = await axios.get(
+        `${ML_SERVICE_URL}/health`,
+        { timeout: 2000 }
+      );
+      return response.data.status === 'ok' || response.data.status === 'healthy';
+    } catch (error) {
+      return false;
     }
   }
 }
