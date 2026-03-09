@@ -30,6 +30,7 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
   const [mediaViewerIndex, setMediaViewerIndex] = useState(0);
 
   const isAuthor = user?._id === post.authorId?._id;
+  const isDraft = post.status === 'draft';
 
   // Track when post becomes visible in viewport
   useViewportTracking(cardRef, post._id, (postId) => {
@@ -50,7 +51,13 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
     }
 
     trackClick(post._id, source, position);
-    navigate(`/post/${post._id}`);
+    
+    // If it's a draft, open edit page directly
+    if (isDraft) {
+      navigate(`/post/${post._id}/edit`);
+    } else {
+      navigate(`/post/${post._id}`);
+    }
   };
 
   // Handle tag click with tracking
@@ -92,10 +99,24 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
     return tmp.textContent || tmp.innerText || "";
   };
 
+  const handlePublish = async () => {
+    try {
+      await postAPI.publishDraft(post._id);
+      toast.success("Draft published successfully!");
+      if (onDelete) {
+        onDelete(post._id); // Remove from drafts list
+      }
+      // Optionally navigate or refresh
+      window.location.reload();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to publish draft");
+    }
+  };
+
   const handleDelete = async () => {
     try {
       await postAPI.deletePost(post._id);
-      toast.success("Post deleted successfully");
+      toast.success(isDraft ? "Draft deleted successfully" : "Post deleted successfully");
       if (onDelete) {
         onDelete(post._id);
       }
@@ -108,8 +129,13 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
     <>
       <div 
         ref={cardRef}
-        className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+        className={`bg-white rounded-lg shadow-sm border transition-shadow cursor-pointer ${
+          isDraft 
+            ? 'border-orange-200 hover:border-orange-300 hover:shadow-md hover:bg-orange-50' 
+            : 'border-gray-200 hover:shadow-md'
+        }`}
         onClick={handlePostClick}
+        title={isDraft ? 'Click to edit this draft' : ''}
       >
         <div className="p-4">
           {/* Header */}
@@ -143,7 +169,12 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
                   >
                     {getTypeIcon(post.type)} {post.type}
                   </span>
-                  {post.isEdited && (
+                  {isDraft && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">
+                      📝 Draft
+                    </span>
+                  )}
+                  {post.isEdited && !isDraft && (
                     <span className="text-xs text-gray-500">(edited)</span>
                   )}
                 </div>
@@ -160,6 +191,17 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
                 </button>
                 {showMenu && (
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                    {isDraft && (
+                      <button
+                        onClick={() => {
+                          handlePublish();
+                          setShowMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-green-600 font-medium"
+                      >
+                        ✅ Publish Draft
+                      </button>
+                    )}
                     <button
                       onClick={() => {
                         navigate(`/post/${post._id}/edit`);
@@ -167,7 +209,7 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
                       }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
                     >
-                      Edit
+                      {isDraft ? '✏️ Edit Draft' : 'Edit'}
                     </button>
                     <button
                       onClick={() => {
@@ -176,7 +218,7 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
                       }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600"
                     >
-                      Delete
+                      🗑️ Delete
                     </button>
                   </div>
                 )}
@@ -345,8 +387,8 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}
         onConfirm={handleDelete}
-        title="Delete Post"
-        message="Are you sure you want to delete this post? This action cannot be undone."
+        title={isDraft ? "Delete Draft" : "Delete Post"}
+        message={isDraft ? "Are you sure you want to delete this draft? This action cannot be undone." : "Are you sure you want to delete this post? This action cannot be undone."}
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"

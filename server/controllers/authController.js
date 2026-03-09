@@ -221,7 +221,26 @@ exports.logout = async (req, res) => {
 // @route   PUT /api/auth/profile
 exports.updateProfile = async (req, res) => {
   try {
-    const { bio, college, yearOfStudy, interests } = req.body;
+    console.log('📝 Update Profile Request Body:', JSON.stringify(req.body, null, 2));
+    
+    const { 
+      bio, 
+      college, 
+      yearOfStudy, 
+      interests,
+      headline,
+      location,
+      website,
+      socialLinks,
+      education,
+      experience,
+      projects,
+      skills,
+      certifications,
+      languages,
+      publications,
+      avatar
+    } = req.body;
 
     const user = await User.findById(req.user._id);
 
@@ -238,13 +257,49 @@ exports.updateProfile = async (req, res) => {
       interests && 
       interests.length > 0;
 
-    // Update fields
+    // Update basic fields
     if (bio !== undefined) user.bio = bio;
     if (college !== undefined) user.college = college;
     if (yearOfStudy !== undefined) user.yearOfStudy = yearOfStudy;
     if (interests !== undefined) user.interests = interests;
+    if (avatar !== undefined) user.avatar = avatar;
+
+    // Update LinkedIn-style fields
+    if (headline !== undefined) user.headline = headline;
+    if (location !== undefined) user.location = location;
+    if (website !== undefined) user.website = website;
+    if (socialLinks !== undefined) user.socialLinks = socialLinks;
+    if (education !== undefined) user.education = education;
+    if (experience !== undefined) user.experience = experience;
+    if (projects !== undefined) user.projects = projects;
+    if (skills !== undefined) user.skills = skills;
+    if (certifications !== undefined) user.certifications = certifications;
+    if (languages !== undefined) user.languages = languages;
+    if (publications !== undefined) user.publications = publications;
+
+    console.log('💾 Saving user with data:', {
+      education: user.education?.length,
+      experience: user.experience?.length,
+      projects: user.projects?.length,
+      skills: user.skills?.length,
+      certifications: user.certifications?.length,
+      languages: user.languages?.length
+    });
 
     await user.save();
+
+    console.log('✅ User saved successfully');
+    
+    // Verify the data was saved by refetching
+    const savedUser = await User.findById(user._id);
+    console.log('🔍 Verification - Data in DB:', {
+      education: savedUser.education?.length,
+      experience: savedUser.experience?.length,
+      projects: savedUser.projects?.length,
+      skills: savedUser.skills?.length,
+      certifications: savedUser.certifications?.length,
+      languages: savedUser.languages?.length
+    });
 
     // Initialize user vector for new users with interests
     if (isFirstTimeSettingInterests) {
@@ -272,10 +327,22 @@ exports.updateProfile = async (req, res) => {
 
     // Clear cache
     await cacheService.del(`user:${user._id}`);
+    await cacheService.del(`profile:${user._id}`);
+
+    const publicProfile = user.getPublicProfile();
+    console.log('📤 Sending back profile:', {
+      education: publicProfile.education?.length,
+      experience: publicProfile.experience?.length,
+      projects: publicProfile.projects?.length,
+      skills: publicProfile.skills?.length,
+      certifications: publicProfile.certifications?.length,
+      languages: publicProfile.languages?.length
+    });
 
     res.status(200).json({
       success: true,
-      user: user.getPublicProfile(),
+      message: 'Profile updated successfully',
+      user: publicProfile,
     });
   } catch (error) {
     console.error('Update profile error:', error);
@@ -344,6 +411,7 @@ exports.updateUsername = async (req, res) => {
 
     // Clear cache
     await cacheService.del(`user:${user._id}`);
+    await cacheService.del(`profile:${user._id}`);
 
     res.status(200).json({
       success: true,
@@ -365,6 +433,15 @@ exports.getUserById = async (req, res) => {
   try {
     const { userId } = req.params;
     
+    // Check cache for public profile
+    const cacheKey = `profile:${userId}`;
+    const cachedProfile = await cacheService.get(cacheKey);
+    
+    if (cachedProfile) {
+      console.log(`✅ Cache hit: Public profile for user ${userId}`);
+      return res.status(200).json(cachedProfile);
+    }
+    
     const user = await User.findById(userId);
     
     if (!user) {
@@ -381,10 +458,15 @@ exports.getUserById = async (req, res) => {
       });
     }
     
-    res.status(200).json({
+    const response = {
       success: true,
       user: user.getPublicProfile(),
-    });
+    };
+    
+    // Cache public profile for 5 minutes
+    await cacheService.set(cacheKey, response, 300);
+    
+    res.status(200).json(response);
   } catch (error) {
     console.error('Get user by ID error:', error);
     res.status(500).json({

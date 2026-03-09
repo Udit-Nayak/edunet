@@ -67,6 +67,154 @@ const userSchema = new mongoose.Schema(
       default: [],
     },
 
+    // LinkedIn-style Professional Profile
+    headline: {
+      type: String,
+      maxlength: [120, "Headline cannot exceed 120 characters"],
+      default: "",
+    },
+
+    location: {
+      city: String,
+      state: String,
+      country: String,
+    },
+
+    website: {
+      type: String,
+      default: "",
+    },
+
+    socialLinks: {
+      linkedin: String,
+      github: String,
+      twitter: String,
+      portfolio: String,
+    },
+
+    education: [
+      {
+        institution: {
+          type: String,
+          required: true,
+        },
+        degree: String,
+        fieldOfStudy: String,
+        startDate: Date,
+        endDate: Date,
+        currentlyStudying: {
+          type: Boolean,
+          default: false,
+        },
+        grade: String,
+        description: String,
+      },
+    ],
+
+    experience: [
+      {
+        title: {
+          type: String,
+          required: true,
+        },
+        company: {
+          type: String,
+          required: true,
+        },
+        location: String,
+        startDate: Date,
+        endDate: Date,
+        currentlyWorking: {
+          type: Boolean,
+          default: false,
+        },
+        description: String,
+        employmentType: {
+          type: String,
+          enum: ["Full-time", "Part-time", "Internship", "Freelance", "Contract", ""],
+          default: "",
+        },
+      },
+    ],
+
+    projects: [
+      {
+        title: {
+          type: String,
+          required: true,
+        },
+        description: String,
+        technologies: [String],
+        startDate: Date,
+        endDate: Date,
+        currentlyWorking: {
+          type: Boolean,
+          default: false,
+        },
+        projectUrl: String,
+        githubUrl: String,
+      },
+    ],
+
+    skills: [
+      {
+        name: {
+          type: String,
+          required: true,
+        },
+        level: {
+          type: String,
+          enum: ["Beginner", "Intermediate", "Advanced", "Expert", ""],
+          default: "",
+        },
+        endorsements: {
+          type: Number,
+          default: 0,
+        },
+      },
+    ],
+
+    certifications: [
+      {
+        name: {
+          type: String,
+          required: true,
+        },
+        issuingOrganization: String,
+        issueDate: Date,
+        expirationDate: Date,
+        credentialId: String,
+        credentialUrl: String,
+      },
+    ],
+
+    languages: [
+      {
+        name: {
+          type: String,
+          required: true,
+        },
+        proficiency: {
+          type: String,
+          enum: ["Elementary", "Limited Working", "Professional", "Full Professional", "Native", ""],
+          default: "",
+        },
+      },
+    ],
+
+    publications: [
+      {
+        title: {
+          type: String,
+          required: true,
+        },
+        publisher: String,
+        publicationDate: Date,
+        description: String,
+        url: String,
+      },
+    ],
+
     // Gamification
     reputation: {
       type: Number,
@@ -305,9 +453,21 @@ userSchema.methods.getPublicProfile = function () {
     isEmailVerified: this.isEmailVerified,
     createdAt: this.createdAt,
     lastActive: this.lastActive,
-    // New gamification fields
+    // Gamification fields
     currentStreak: this.currentStreak || 0,
     longestStreak: this.longestStreak || 0,
+    // Professional profile fields
+    headline: this.headline,
+    location: this.location,
+    website: this.website,
+    socialLinks: this.socialLinks,
+    education: this.education,
+    experience: this.experience,
+    projects: this.projects,
+    skills: this.skills,
+    certifications: this.certifications,
+    languages: this.languages,
+    publications: this.publications,
   };
 };
 module.exports = mongoose.model("User", userSchema);

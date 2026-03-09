@@ -5,6 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 import toast from "react-hot-toast";
 import { authAPI } from '../services/api';
 import { updateUser, setNeedsProfileSetup } from "../redux/slices/authSlice";
+import AvatarUpload from "../components/common/AvatarUpload";
 
 export default function ProfileSetup() {
   const { user, loading, isAuthenticated } = useAuth();
@@ -21,14 +22,31 @@ export default function ProfileSetup() {
   const [formData, setFormData] = useState({
     username: user?.username || '',
     bio: "",
+    headline: "",
     college: "",
     yearOfStudy: "",
     interests: "",
+    location: {
+      city: "",
+      state: "",
+      country: ""
+    },
+    website: "",
+    avatar: user?.avatar || ""
   });
   const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    if (name.includes('.')) {
+      const [parent, child] = name.split('.');
+      setFormData({
+        ...formData,
+        [parent]: { ...formData[parent], [child]: value }
+      });
+    } else {
+      setFormData({ ...formData, [name]: value });
+    }
   };
 
   const handleSkip = () => {
@@ -60,9 +78,13 @@ export default function ProfileSetup() {
 
       const profileData = {
         bio: formData.bio,
+        headline: formData.headline,
         college: formData.college,
         yearOfStudy: parseInt(formData.yearOfStudy) || undefined,
         interests: interestsArray,
+        location: formData.location,
+        website: formData.website,
+        avatar: formData.avatar
       };
 
       await authAPI.updateProfile(profileData);
@@ -128,6 +150,15 @@ export default function ProfileSetup() {
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="space-y-6">{/* Removed form tag */}
+            {/* Avatar Upload */}
+            <div className="flex justify-center pb-6 border-b border-gray-200">
+              <AvatarUpload
+                currentAvatar={formData.avatar}
+                onAvatarChange={(url) => setFormData({ ...formData, avatar: url })}
+                size="xl"
+              />
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Bio
@@ -140,6 +171,54 @@ export default function ProfileSetup() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Tell us about yourself..."
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Professional Headline
+              </label>
+              <input
+                name="headline"
+                type="text"
+                value={formData.headline}
+                onChange={handleChange}
+                maxLength={120}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="e.g., Computer Science Student | Full Stack Developer"
+              />
+              <p className="text-xs text-gray-500 mt-1">{formData.headline.length}/120 characters</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Location
+              </label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input
+                  name="location.city"
+                  type="text"
+                  value={formData.location.city}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="City"
+                />
+                <input
+                  name="location.state"
+                  type="text"
+                  value={formData.location.state}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="State"
+                />
+                <input
+                  name="location.country"
+                  type="text"
+                  value={formData.location.country}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  placeholder="Country"
+                />
+              </div>
             </div>
 
             <div>
@@ -187,6 +266,20 @@ export default function ProfileSetup() {
                 onChange={handleChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Python, AI, Web Dev"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Website (optional)
+              </label>
+              <input
+                name="website"
+                type="url"
+                value={formData.website}
+                onChange={handleChange}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                placeholder="https://yourwebsite.com"
               />
             </div>
 

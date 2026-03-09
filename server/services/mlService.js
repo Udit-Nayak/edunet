@@ -1215,8 +1215,56 @@ class MLService {
 
       return uniquePosts;
     } catch (error) {
-      console.error('Get similar posts with details error:', error);
-      return [];
+      console.error('ML service unavailable, using fallback tag-based similarity:', error.code);
+      
+      // Fallback: Tag-based similarity when ML service is down
+      try {
+        const currentPost = await Post.findById(postId).lean();
+        if (!currentPost || !currentPost.tags || currentPost.tags.length === 0) {
+          return [];
+        }
+
+        // Find posts with matching tags (exclude current post)
+        const similarPosts = await Post.find({
+          _id: { $ne: postId },
+          tags: { $in: currentPost.tags },
+          status: 'published'
+        })
+          .populate('authorId', 'username avatar reputation')
+          .limit(limit * 2) // Get more to filter duplicates
+          .lean();
+
+        // Calculate similarity score based on tag overlap
+        const postsWithSimilarity = similarPosts.map(post => {
+          const commonTags = post.tags.filter(tag => currentPost.tags.includes(tag));
+          const similarity = commonTags.length / Math.max(post.tags.length, currentPost.tags.length);
+          
+          return {
+            ...post,
+            similarity
+          };
+        });
+
+        // Sort by similarity score
+        postsWithSimilarity.sort((a, b) => b.similarity - a.similarity);
+
+        // Deduplicate by title
+        const uniquePosts = [];
+        const seenTitles = new Set();
+        
+        for (const post of postsWithSimilarity) {
+          const normalizedTitle = post.title.toLowerCase().trim();
+          if (!seenTitles.has(normalizedTitle) && uniquePosts.length < limit) {
+            seenTitles.add(normalizedTitle);
+            uniquePosts.push(post);
+          }
+        }
+
+        return uniquePosts;
+      } catch (fallbackError) {
+        console.error('Fallback similarity search also failed:', fallbackError);
+        return [];
+      }
     }
   }
 

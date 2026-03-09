@@ -49,6 +49,7 @@ export const postAPI = {
   getMyDrafts: () => API.get('/posts/drafts/my-drafts'),
   getDraftById: (id) => API.get(`/posts/drafts/${id}`),
   cleanupOldDrafts: () => API.delete('/posts/drafts/cleanup'),
+  publishDraft: (id) => API.put(`/posts/${id}`, { status: 'published' }),
   getHybridFeed: (params) => API.get('/posts/hybrid-feed', { params }),
   getSimilarPosts: (id, params) => API.get(`/posts/${id}/similar`, { params }),
 };

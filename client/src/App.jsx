@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Provider, useDispatch } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
 import { store } from './redux/store';
@@ -13,7 +13,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import ProfileSetup from './pages/ProfileSetup';
 import Dashboard from './pages/Dashboard';
-import EditProfile from './pages/EditProfile';
+import EditProfile from './pages/EditProfileNew';
 import Feed from './pages/Feed';
 import PersonalizedFeed from './pages/PersonalizedFeed';
 import CreatePost from './pages/CreatePost';
@@ -78,6 +78,7 @@ class ErrorBoundary extends React.Component {
 // Protected Route Component
 function ProtectedRoute({ children, skipProfileCheck = false }) {
   const { isAuthenticated, loading, needsProfileSetup } = useAuth();
+  const location = useLocation();
 
   console.log('ProtectedRoute:', { isAuthenticated, loading, needsProfileSetup, skipProfileCheck });
 
@@ -86,8 +87,9 @@ function ProtectedRoute({ children, skipProfileCheck = false }) {
   }
 
   if (!isAuthenticated) {
-    console.log('Not authenticated, redirecting to login');
-    return <Navigate to="/login" replace />;
+    console.log('Not authenticated, redirecting to login with return path');
+    // Save the current location so we can redirect back after login
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (!skipProfileCheck && needsProfileSetup) {
@@ -101,6 +103,7 @@ function ProtectedRoute({ children, skipProfileCheck = false }) {
 // Public Route Component
 function PublicRoute({ children }) {
   const { isAuthenticated, loading, needsProfileSetup } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <LoadingScreen />;
@@ -111,7 +114,10 @@ function PublicRoute({ children }) {
   }
 
   if (isAuthenticated) {
-    return <Navigate to="/feed" replace />;
+    // Redirect to the page they were trying to access, or /feed if none
+    const from = location.state?.from?.pathname || '/feed';
+    console.log('Already authenticated, redirecting to:', from);
+    return <Navigate to={from} replace />;
   }
 
   return children;
@@ -227,7 +233,7 @@ function AppContent() {
         <Route path="/post/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />
         <Route path="/user/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/edit-profile" element={<ProtectedRoute><EditProfile /></ProtectedRoute>} />
+        <Route path="/edit-profile" element={<ProtectedRoute skipProfileCheck={true}><EditProfile /></ProtectedRoute>} />
         <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
 
         {/* 404 */}

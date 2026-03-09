@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
 import { authAPI } from '../services/api';
@@ -17,6 +17,10 @@ export default function Register() {
   const [loading, setLoadingState] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get the page they were trying to visit, or default to /dashboard
+  const from = location.state?.from?.pathname || '/dashboard';
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -88,7 +92,8 @@ export default function Register() {
       if (isNewUser) {
         navigate('/profile-setup');
       } else {
-        navigate('/dashboard');
+        // Redirect to the page they were trying to visit
+        navigate(from, { replace: true });
       }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Google sign-in failed');

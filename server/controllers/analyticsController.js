@@ -3,6 +3,7 @@ const Interaction = require("../models/Interaction");
 const User = require("../models/User");
 const Post = require("../models/Post");
 const mlService = require('../services/mlService');
+const cacheService = require('../services/cacheService');
 
 
 /**
@@ -90,6 +91,21 @@ exports.trackInteraction = async (req, res) => {
       console.error("Error updating post metrics:", err);
     });
 
+    // Clear interaction cache
+    cacheService.delPattern(`interactions:${userId}:*`).catch((err) => {
+      console.error("Error clearing interaction cache:", err);
+    });
+    
+    // Clear personalized feed cache on significant interactions
+    if (['upvote', 'save', 'answer', 'comment'].includes(action)) {
+      cacheService.delPattern(`feed:personalized:${userId}:*`).catch((err) => {
+        console.error("Error clearing personalized feed cache:", err);
+      });
+      cacheService.delPattern(`feed:hybrid:${userId}:*`).catch((err) => {
+        console.error("Error clearing hybrid feed cache:", err);
+      });
+    }
+
     res.status(200).json({
       success: true,
       message: "Interaction tracked successfully",
@@ -126,6 +142,15 @@ exports.getMyInteractions = async (req, res) => {
     const { limit = 50, action } = req.query;
     const userId = req.user._id;
 
+    // Check cache
+    const cacheKey = `interactions:${userId}:${action || 'all'}:${limit}`;
+    const cachedData = await cacheService.get(cacheKey);
+    
+    if (cachedData) {
+      console.log(`✅ Cache hit: Interactions for user ${req.user._id}`);
+      return res.status(200).json(cachedData);
+    }
+
     const query = { userId };
     if (action) {
       query.action = action;
@@ -137,11 +162,16 @@ exports.getMyInteractions = async (req, res) => {
       .populate("postId", "title type tags")
       .lean();
 
-    res.status(200).json({
+    const response = {
       success: true,
       count: interactions.length,
       interactions,
-    });
+    };
+    
+    // Cache for 2 minutes
+    await cacheService.set(cacheKey, response, 120);
+
+    res.status(200).json(response);
   } catch (error) {
     console.error("Get my interactions error:", error);
     res.status(500).json({
@@ -321,9 +351,12 @@ function determineLabel(action, metadata) {
 }
 
 /**
- * Update user interaction history
+ * Update user interaction history with retry logic for version conflicts
  */
-async function updateUserHistory(userId, postId, action, metadata) {
+async function updateUserHistory(userId, postId, action, metadata, retryCount = 0) {
+  const MAX_RETRIES = 3;
+  const RETRY_DELAY = 50; // Base delay in ms
+  
   try {
     const user = await User.findById(userId);
     if (!user) {
@@ -427,6 +460,15 @@ async function updateUserHistory(userId, postId, action, metadata) {
     await user.save();
     console.log(`✅ Updated user history for ${user.username}: ${action}`);
   } catch (error) {
+    // Handle version conflict with retry logic
+    if (error.name === 'VersionError' && retryCount < MAX_RETRIES) {
+      const delay = RETRY_DELAY * Math.pow(2, retryCount); // Exponential backoff
+      console.log(`⚠️ Version conflict detected, retrying in ${delay}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return updateUserHistory(userId, postId, action, metadata, retryCount + 1);
+    }
+    
     console.error('Error in updateUserHistory:', error);
   }
 }

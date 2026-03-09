@@ -13,6 +13,7 @@ export default function EditPost() {
   const navigate = useNavigate();
   
   const [loading, setLoading] = useState(true);
+  const [isDraft, setIsDraft] = useState(false);
   const [formData, setFormData] = useState({
     type: 'question',
     title: '',
@@ -42,6 +43,7 @@ export default function EditPost() {
         attachments: post.attachments || [],
         status: post.status,
       });
+      setIsDraft(post.status === 'draft');
     } catch{
       toast.error('Failed to load post');
       navigate('/feed');
@@ -69,7 +71,7 @@ export default function EditPost() {
     });
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e, shouldPublish = false) => {
     e.preventDefault();
 
     if (!formData.title.trim()) {
@@ -90,8 +92,19 @@ export default function EditPost() {
     setSubmitting(true);
 
     try {
-      await postAPI.updatePost(id, formData);
-      toast.success('Post updated successfully!');
+      const updateData = {
+        ...formData,
+        status: shouldPublish ? 'published' : formData.status
+      };
+      
+      await postAPI.updatePost(id, updateData);
+      
+      if (shouldPublish) {
+        toast.success('Draft published successfully!');
+      } else {
+        toast.success('Post updated successfully!');
+      }
+      
       navigate(`/post/${id}`);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update post');
@@ -117,8 +130,17 @@ export default function EditPost() {
 
       <div className="max-w-4xl mx-auto px-4 py-6">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Post</h1>
-          <p className="text-gray-600">Update your post information</p>
+          <div className="flex items-center space-x-3 mb-2">
+            <h1 className="text-3xl font-bold text-gray-900">Edit Post</h1>
+            {isDraft && (
+              <span className="px-3 py-1 bg-orange-100 text-orange-700 text-sm font-medium rounded-full">
+                📝 Draft
+              </span>
+            )}
+          </div>
+          <p className="text-gray-600">
+            {isDraft ? 'Update your draft and publish when ready' : 'Update your post information'}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -288,9 +310,25 @@ export default function EditPost() {
             >
               Cancel
             </button>
-            <button type="submit" className="btn-primary" disabled={submitting}>
-              {submitting ? 'Updating...' : 'Update Post'}
-            </button>
+            <div className="flex space-x-3">
+              {isDraft && (
+                <button 
+                  type="button"
+                  onClick={(e) => handleSubmit(e, true)} 
+                  className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={submitting}
+                >
+                  {submitting ? '✨ Publishing...' : '✅ Publish Now'}
+                </button>
+              )}
+              <button 
+                type="submit" 
+                className="btn-primary" 
+                disabled={submitting}
+              >
+                {submitting ? 'Updating...' : isDraft ? '💾 Save Draft' : 'Update Post'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

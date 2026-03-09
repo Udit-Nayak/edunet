@@ -1,5 +1,6 @@
 const mlService = require('../services/mlService');
 const User = require('../models/User');
+const cacheService = require('../services/cacheService');
 
 /**
  * @route   GET /api/posts/personalized-feed
@@ -10,6 +11,15 @@ exports.getPersonalizedFeed = async (req, res) => {
   try {
     const { page = 1, limit = 20 } = req.query;
     const userId = req.user._id;
+
+    // Check cache first
+    const cacheKey = `feed:personalized:${userId}:${limit}`;
+    const cachedFeed = await cacheService.get(cacheKey);
+    
+    if (cachedFeed) {
+      console.log(`✅ Cache hit: Personalized feed for ${req.user.username}`);
+      return res.status(200).json(cachedFeed);
+    }
 
     console.log(`📊 Generating personalized feed for ${req.user.username}...`);
 
@@ -25,20 +35,30 @@ exports.getPersonalizedFeed = async (req, res) => {
         .populate('authorId', 'username avatar reputation')
         .lean();
 
-      return res.status(200).json({
+      const fallbackResponse = {
         success: true,
         posts: fallbackPosts,
         personalized: false,
         message: 'Showing recent posts',
-      });
+      };
+      
+      // Cache fallback for 30 seconds
+      await cacheService.set(cacheKey, fallbackResponse, 30);
+      
+      return res.status(200).json(fallbackResponse);
     }
 
-    res.status(200).json({
+    const response = {
       success: true,
       posts,
       personalized: true,
       count: posts.length,
-    });
+    };
+    
+    // Cache personalized feed for 1 minute
+    await cacheService.set(cacheKey, response, 60);
+
+    res.status(200).json(response);
 
     console.log(`✅ Personalized feed generated: ${posts.length} posts`);
   } catch (error) {
@@ -67,16 +87,30 @@ exports.semanticSearch = async (req, res) => {
       });
     }
 
+    // Check cache for semantic search
+    const cacheKey = `semantic:search:${query.trim().toLowerCase()}:${limit}`;
+    const cachedResults = await cacheService.get(cacheKey);
+    
+    if (cachedResults) {
+      console.log(`✅ Cache hit: Semantic search "${query}"`);
+      return res.status(200).json(cachedResults);
+    }
+
     console.log(`🔍 Semantic search: "${query}"`);
 
     const results = await mlService.searchPosts(query.trim(), parseInt(limit));
 
-    res.status(200).json({
+    const response = {
       success: true,
       query: query.trim(),
       posts: results,
       count: results.length,
-    });
+    };
+    
+    // Cache semantic search for 5 minutes
+    await cacheService.set(cacheKey, response, 300);
+
+    res.status(200).json(response);
   } catch (error) {
     console.error('Semantic search error:', error);
     res.status(500).json({
@@ -96,6 +130,15 @@ exports.getHybridFeed = async (req, res) => {
   try {
     const { limit = 10, page = 1 } = req.query;
     const userId = req.user._id;
+
+    // Check cache for hybrid feed
+    const cacheKey = `feed:hybrid:${userId}:${page}:${limit}`;
+    const cachedFeed = await cacheService.get(cacheKey);
+    
+    if (cachedFeed) {
+      console.log(`✅ Cache hit: Hybrid feed for ${req.user.username} (page ${page})`);
+      return res.status(200).json(cachedFeed);
+    }
 
     console.log(`🎯 Generating hybrid feed for ${req.user.username} (page ${page})...`);
 
@@ -117,7 +160,7 @@ exports.getHybridFeed = async (req, res) => {
 
       const total = await Post.countDocuments({ status: 'published' });
 
-      return res.status(200).json({
+      const fallbackResponse = {
         success: true,
         posts: fallbackPosts,
         hybrid: false,
@@ -128,10 +171,15 @@ exports.getHybridFeed = async (req, res) => {
           totalPosts: total,
           limit: parseInt(limit),
         },
-      });
+      };
+      
+      // Cache fallback for 30 seconds
+      await cacheService.set(cacheKey, fallbackResponse, 30);
+
+      return res.status(200).json(fallbackResponse);
     }
 
-    res.status(200).json({
+    const response = {
       success: true,
       posts: result.posts,
       hybrid: true,
@@ -143,7 +191,12 @@ exports.getHybridFeed = async (req, res) => {
         totalPosts: result.total,
         limit: parseInt(limit),
       },
-    });
+    };
+    
+    // Cache hybrid feed for 1 minute
+    await cacheService.set(cacheKey, response, 60);
+
+    res.status(200).json(response);
 
     console.log(`✅ Hybrid feed generated: ${result.posts.length} posts (page ${page}/${Math.ceil(result.total / parseInt(limit))})`);
   } catch (error) {
