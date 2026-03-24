@@ -87,7 +87,7 @@ export default function SearchFilters({ filters, onFilterChange, onClearAll }) {
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between hidden lg:flex pb-4 border-b border-border mb-6">
+        <div className="flex items-center justify-between lg:flex pb-4 border-b border-border mb-6">
           <div className="flex items-center space-x-2 w-full">
             <FiFilter className="w-5 h-5 text-text-secondary" />
             <h3 className="font-bold text-[16px] text-text-primary">Filters</h3>
