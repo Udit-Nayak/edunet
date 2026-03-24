@@ -6,7 +6,7 @@ pydantic-settings==2.1.0
 python-multipart==0.0.6
 
 # TensorFlow (CPU version for production)
-tensorflow==2.15.0
+tensorflow-lite==2.15.0
 tensorflow-hub==0.16.1
 # tensorflow-text==2.15.0
 tensorflow-estimator==2.15.0
