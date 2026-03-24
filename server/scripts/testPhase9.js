@@ -20,7 +20,7 @@ const User = require('../models/User');
 const Post = require('../models/Post');
 const interactionTrackingService = require('../services/interactionTrackingService');
 const abTestingService = require('../services/abTestingService');
-const { processDailyInteractions, getProcessingStats } = require('../jobs/processInteractions');
+const { getProcessingStats } = require('../jobs/processInteractions');
 
 // Test results tracking
 const results = {
@@ -172,7 +172,7 @@ async function testABTestingAssignment() {
   
   try {
     // Create test production model
-    const productionModel = await ModelVersion.create({
+    await ModelVersion.create({
       versionId: 'test_production_v1',
       modelName: 'ranking_model',
       versionNumber: '1.0.0',

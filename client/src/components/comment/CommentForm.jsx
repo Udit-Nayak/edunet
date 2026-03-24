@@ -40,20 +40,20 @@ export default function CommentForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} className="flex space-x-2">
+    <form onSubmit={handleSubmit} className="flex items-center gap-2">
       <input
         type="text"
         value={content}
         onChange={(e) => setContent(e.target.value)}
         placeholder={placeholder}
-        className="input-field text-sm"
+        className="w-full rounded-full border border-border bg-bg-primary px-5 py-2.5 text-sm text-text-primary placeholder:text-text-tertiary outline-none focus:ring-2 focus:ring-primary/40"
         maxLength={1000}
         disabled={loading}
       />
       <button
         type="submit"
         disabled={loading || !content.trim()}
-        className="btn-primary text-sm whitespace-nowrap"
+        className="px-5 py-2.5 rounded-full bg-primary text-white text-sm font-semibold whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed hover:bg-primary-hover transition-colors"
       >
         {loading ? 'Posting...' : 'Comment'}
       </button>

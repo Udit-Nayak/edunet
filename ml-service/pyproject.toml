@@ -1,0 +1,16 @@
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = [
+  "venv",
+  "__pycache__",
+  "models",
+  "data",
+]
+
+[tool.ruff.lint]
+# Deployment-focused checks:
+# - syntax/parsing issues
+# - invalid annotations
+# - undefined names and unresolved references
+select = ["E9", "F63", "F7", "F82"]

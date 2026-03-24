@@ -1,25 +1,110 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { postAPI } from "../services/api";
-import Navbar from "../components/common/Navbar";
+import PageShell from "../components/common/PageShell";
 import PostCard from "../components/post/PostCard";
 import LoadingSpinner from "../components/common/LoadingSpinner";
 import ErrorMessage from "../components/common/ErrorMessage";
-import { FiFilter, FiTrendingUp, FiClock, FiStar, FiZap } from "react-icons/fi";
+import { FiFilter, FiTrendingUp, FiClock, FiStar, FiZap, FiChevronDown } from "react-icons/fi";
+import * as Tabs from "@radix-ui/react-tabs";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
+import { Button } from "../components/ui/Button";
+
+const SORT_OPTIONS = [
+  { value: "recommended", label: "Recommended", icon: <FiZap className="w-4 h-4" /> },
+  { value: "recent", label: "Recent", icon: <FiClock className="w-4 h-4" /> },
+  { value: "popular", label: "Popular", icon: <FiStar className="w-4 h-4" /> },
+  { value: "trending", label: "Trending", icon: <FiTrendingUp className="w-4 h-4" /> },
+];
 
 export default function Feed() {
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sidebarData, setSidebarData] = useState({
+    aiPicks: [],
+    trendingDiscussions: [],
+    topUsers: [],
+  });
   const [filters, setFilters] = useState({
-    type: "all", // all, question, note, article
-    sortBy: "recommended", // recommended, recent, popular, trending
+    type: "all",
+    sortBy: "recommended",
   });
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const navigate = useNavigate();
   const observer = useRef();
   const lastPostElementRef = useRef();
+
+  const getTimeAgo = (date) => {
+    const diff = Math.max(0, Date.now() - new Date(date).getTime());
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return "just now";
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  const fetchSidebarData = useCallback(async () => {
+    try {
+      const [personalizedRes, trendingRes, popularRes] = await Promise.allSettled([
+        postAPI.getPersonalizedFeed({ limit: 6 }),
+        postAPI.getPosts({ sortBy: "trending", limit: 6, page: 1, status: "published" }),
+        postAPI.getPosts({ sortBy: "popular", limit: 20, page: 1, status: "published" }),
+      ]);
+
+      const personalizedPosts =
+        personalizedRes.status === "fulfilled" ? (personalizedRes.value.data?.posts || []) : [];
+      const trendingPosts =
+        trendingRes.status === "fulfilled" ? (trendingRes.value.data?.posts || []) : [];
+      const popularPosts =
+        popularRes.status === "fulfilled" ? (popularRes.value.data?.posts || []) : [];
+
+      const aiPicks = personalizedPosts.slice(0, 3).map((post) => ({
+        id: post._id,
+        title: post.title,
+        subject: (post.tags && post.tags[0]) || post.type || "general",
+        subjectColor: post.type === "question" ? "#0A66C2" : post.type === "note" ? "#0DD3BB" : "#FF8A00",
+        timeAgo: getTimeAgo(post.createdAt),
+      }));
+
+      const trendingDiscussions = trendingPosts.slice(0, 3).map((post) => ({
+        id: post._id,
+        title: post.title,
+        commentCount: Number(post.answerCount || 0),
+      }));
+
+      const byAuthor = new Map();
+      popularPosts.forEach((post) => {
+        const author = post.authorId;
+        if (!author?._id) return;
+        const current = byAuthor.get(author._id) || {
+          id: author._id,
+          name: author.username || "User",
+          avatar: author.avatar,
+          reputation: author.reputation || 0,
+          repDelta: 0,
+        };
+        current.repDelta += Number(post.upvotes || 0);
+        byAuthor.set(author._id, current);
+      });
+
+      const topUsers = Array.from(byAuthor.values())
+        .sort((a, b) => b.repDelta - a.repDelta || b.reputation - a.reputation)
+        .slice(0, 3)
+        .map((u) => ({ ...u, repDelta: Math.max(1, u.repDelta) }));
+
+      setSidebarData({ aiPicks, trendingDiscussions, topUsers });
+    } catch {
+      setSidebarData({ aiPicks: [], trendingDiscussions: [], topUsers: [] });
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSidebarData();
+  }, [fetchSidebarData]);
 
   useEffect(() => {
     setPosts([]);
@@ -42,16 +127,22 @@ export default function Feed() {
         params.type = filters.type;
       }
 
-      // Use hybrid feed for recommended, otherwise use regular feed
-      const response = filters.sortBy === "recommended" 
+      const shouldUseHybrid = filters.sortBy === "recommended" && filters.type === "all";
+      const response = shouldUseHybrid
         ? await postAPI.getHybridFeed(params)
         : await postAPI.getPosts(params);
-      const newPosts = response.data.posts;
+
+      // Enforce type filter client-side as a safety net for endpoints that may return mixed content.
+      const requestedType = filters.type?.toLowerCase();
+      const normalizedPosts = (response.data.posts || []).filter((post) => {
+        if (requestedType === "all") return true;
+        return String(post?.type || "").toLowerCase() === requestedType;
+      });
 
       if (append) {
-        setPosts((prev) => [...prev, ...newPosts]);
+        setPosts((prev) => [...prev, ...normalizedPosts]);
       } else {
-        setPosts(newPosts);
+        setPosts(normalizedPosts);
       }
 
       setHasMore(
@@ -73,7 +164,6 @@ export default function Feed() {
     }
   }, [loading, hasMore, page, fetchPosts]);
 
-  // Intersection Observer for infinite scroll
   useEffect(() => {
     if (loading) return;
     if (observer.current) observer.current.disconnect();
@@ -86,7 +176,7 @@ export default function Feed() {
 
     observer.current = new IntersectionObserver(callback, {
       threshold: 0.1,
-      rootMargin: "100px", // Start loading 100px before reaching the element
+      rootMargin: "100px",
     });
 
     if (lastPostElementRef.current) {
@@ -102,123 +192,120 @@ export default function Feed() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
+  const currentSortLabel = SORT_OPTIONS.find(opt => opt.value === filters.sortBy)?.label || "Sort";
 
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Feed</h1>
-          <p className="text-gray-600">
-            Discover questions, notes, and articles from the community
-          </p>
+  return (
+    <PageShell rightSidebarProps={sidebarData}>
+      <div className="flex flex-col gap-4 pb-12">
+        {/* Create Post Prompt / Header */}
+        <div className="bg-white rounded-xl shadow-card border border-border p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl font-bold text-text-primary">Your Feed</h1>
+            <p className="text-sm text-text-secondary mt-0.5">Discover the latest academic discussions</p>
+          </div>
+          <Button variant="primary" onClick={() => navigate('/create-post')} className="shrink-0">
+            Start a post
+          </Button>
         </div>
 
         {/* AI Recommendation Banner */}
         {filters.sortBy === "recommended" && (
-          <div className="bg-gradient-to-r from-primary-50 to-purple-50 border border-primary-200 rounded-lg p-4 mb-4">
-            <div className="flex items-start space-x-3">
-              <FiZap className="w-5 h-5 text-primary-600 mt-0.5 flex-shrink-0" />
-              <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">
-                  AI-Powered Recommendations
-                </h3>
-                <p className="text-xs text-gray-600">
-                  Posts personalized for you using content-based analysis (60%), collaborative filtering (30%), and trending topics (10%)
-                </p>
-              </div>
+          <div className="bg-gradient-to-r from-primary-light/50 to-white border border-primary/20 rounded-xl p-4 flex items-start gap-3 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+              <FiZap className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-primary">For You</h3>
+              <p className="text-xs text-text-secondary mt-1 max-w-[90%]">
+                Posts personalized based on your tags, engagement, and trending academic topics.
+              </p>
             </div>
           </div>
         )}
 
-        {/* Filters */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            {/* Post Type Filter */}
-            <div className="flex items-center space-x-2">
-              <FiFilter className="w-5 h-5 text-gray-500" />
-              <select
-                value={filters.type}
-                onChange={(e) => handleFilterChange("type", e.target.value)}
-                className="input-field py-2"
-              >
-                <option value="all">All Posts</option>
-                <option value="question">Questions</option>
-                <option value="note">Notes</option>
-                <option value="article">Articles</option>
-              </select>
+        {/* Filters Bar: Radix Tabs for Type + Dropdown for Sort */}
+        <div className="bg-white rounded-xl shadow-card border border-border px-1 py-1 sticky top-[72px] z-20">
+          <Tabs.Root 
+            value={filters.type} 
+            onValueChange={(val) => handleFilterChange("type", val)}
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-2"
+          >
+            <Tabs.List className="flex items-center overflow-x-auto hide-scrollbar gap-1 p-1">
+              {[{ value: "all", label: "All Topics" }, { value: "question", label: "Questions" }, { value: "note", label: "Notes" }, { value: "article", label: "Articles" }].map(tab => (
+                <Tabs.Trigger
+                  key={tab.value}
+                  value={tab.value}
+                  className={`
+                    px-4 py-2 text-sm font-semibold rounded-lg transition-all flex-shrink-0
+                    data-[state=active]:bg-bg-secondary data-[state=active]:text-text-primary
+                    data-[state=inactive]:text-text-secondary data-[state=inactive]:hover:bg-bg-secondary/50 data-[state=inactive]:hover:text-text-primary
+                    outline-none focus-visible:ring-2 focus-visible:ring-primary/50
+                  `}
+                >
+                  {tab.label}
+                </Tabs.Trigger>
+              ))}
+            </Tabs.List>
+            
+            <div className="px-2 pb-2 sm:pb-0 sm:pr-2 flex items-center justify-end">
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold text-text-secondary hover:bg-bg-secondary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/50 min-w-max">
+                    <FiFilter className="w-4 h-4" />
+                    <span>{currentSortLabel}</span>
+                    <FiChevronDown className="w-4 h-4 opacity-50" />
+                  </button>
+                </DropdownMenu.Trigger>
+                
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content 
+                    align="end" 
+                    sideOffset={5}
+                    className="z-50 min-w-[180px] bg-white rounded-xl shadow-dropdown border border-border p-1 animate-in fade-in zoom-in-95"
+                  >
+                    {SORT_OPTIONS.map((option) => (
+                      <DropdownMenu.Item
+                        key={option.value}
+                        onSelect={() => handleFilterChange("sortBy", option.value)}
+                        className={`
+                          flex items-center gap-2 px-3 py-2.5 text-sm font-medium rounded-lg cursor-pointer outline-none transition-colors
+                          ${filters.sortBy === option.value ? "bg-primary/10 text-primary font-bold" : "text-text-primary hover:bg-bg-secondary"}
+                        `}
+                      >
+                        {option.icon}
+                        {option.label}
+                      </DropdownMenu.Item>
+                    ))}
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
             </div>
-
-            {/* Sort Filter */}
-            <div className="flex items-center space-x-2 flex-wrap">
-              <span className="text-sm text-gray-600">Sort by:</span>
-              <button
-                onClick={() => handleFilterChange("sortBy", "recommended")}
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filters.sortBy === "recommended"
-                    ? "bg-gradient-to-r from-primary-600 to-purple-600 text-white shadow-md"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                <FiZap className="w-4 h-4" />
-                <span>Recommended</span>
-              </button>
-              <button
-                onClick={() => handleFilterChange("sortBy", "recent")}
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filters.sortBy === "recent"
-                    ? "bg-primary-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                <FiClock className="w-4 h-4" />
-                <span>Recent</span>
-              </button>
-              <button
-                onClick={() => handleFilterChange("sortBy", "popular")}
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filters.sortBy === "popular"
-                    ? "bg-primary-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                <FiStar className="w-4 h-4" />
-                <span>Popular</span>
-              </button>
-              <button
-                onClick={() => handleFilterChange("sortBy", "trending")}
-                className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  filters.sortBy === "trending"
-                    ? "bg-primary-600 text-white"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                }`}
-              >
-                <FiTrendingUp className="w-4 h-4" />
-                <span>Trending</span>
-              </button>
-            </div>
-          </div>
+          </Tabs.Root>
         </div>
 
         {/* Posts List */}
-        <div className="space-y-4">
+        <div className="flex flex-col gap-4 mt-2">
           {loading && page === 1 ? (
-            <LoadingSpinner size="lg" text="Loading posts..." />
+            <div className="py-20 flex justify-center">
+              <LoadingSpinner size="lg" text="Discovering knowledge..." />
+            </div>
           ) : error ? (
             <ErrorMessage
               message={error}
               onRetry={() => fetchPosts(1, false)}
             />
           ) : posts.length === 0 ? (
-            <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">No posts found</p>
-              <button
-                onClick={() => navigate("/create-post")}
-                className="btn-primary"
-              >
+            <div className="bg-white rounded-xl shadow-sm border border-border text-center py-16 px-4">
+              <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+                <FiFilter className="w-8 h-8 text-text-tertiary" />
+              </div>
+              <h3 className="text-lg font-bold text-text-primary mb-1">No posts found</h3>
+              <p className="text-text-secondary mb-6 max-w-sm mx-auto">
+                We couldn't find any posts matching your current filters. Try adjusting them or start a new topic!
+              </p>
+              <Button onClick={() => navigate("/create-post")} variant="primary">
                 Create First Post
-              </button>
+              </Button>
             </div>
           ) : (
             <>
@@ -231,30 +318,30 @@ export default function Feed() {
                 />
               ))}
 
-              {/* Infinite Scroll Sentinel & Loading Indicator */}
+              {/* Infinite Scroll Sentinel */}
               {hasMore && (
-                <div ref={lastPostElementRef} className="text-center py-8">
+                <div ref={lastPostElementRef} className="py-8 flex justify-center">
                   {loading && (
-                    <div className="flex flex-col items-center space-y-2">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-                      <p className="text-sm text-gray-500">Loading more posts...</p>
+                    <div className="flex flex-col items-center gap-2">
+                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-xs font-semibold text-text-tertiary uppercase tracking-wider">Loading more</span>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* End of Feed Message */}
+              {/* End of Feed */}
               {!hasMore && posts.length > 0 && (
-                <div className="text-center py-8 border-t border-gray-200">
-                  <p className="text-gray-500 text-sm">
-                    🎉 You've reached the end! No more posts to show.
-                  </p>
+                <div className="py-10 text-center">
+                  <div className="inline-block px-4 py-2 bg-bg-secondary rounded-full text-sm font-semibold text-text-secondary">
+                    You've reached the end of your feed
+                  </div>
                 </div>
               )}
             </>
           )}
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { answerAPI } from '../../services/api';
 import RichTextEditor from '../post/RichTextEditor';
 import toast from 'react-hot-toast';
+import { Button } from '../ui/Button';
 
 export default function AnswerForm({ postId, onAnswerCreated, onAnswerTracking }) {
   const [content, setContent] = useState('');
@@ -38,13 +39,15 @@ export default function AnswerForm({ postId, onAnswerCreated, onAnswerTracking }
         onChange={setContent}
         placeholder="Write your answer here..."
       />
-      <button
-        type="submit"
-        disabled={loading}
-        className="btn-primary"
-      >
-        {loading ? 'Posting...' : 'Post Answer'}
-      </button>
+      <div className="flex justify-end">
+        <Button
+          type="submit"
+          disabled={loading}
+          variant="primary"
+        >
+          {loading ? 'Posting...' : 'Post Answer'}
+        </Button>
+      </div>
     </form>
   );
 }

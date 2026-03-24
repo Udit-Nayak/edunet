@@ -1,11 +1,18 @@
+import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { useAuth } from '../../hooks/useAuth';
 import { authAPI } from '../../services/api';
 import { logout as logoutAction } from '../../redux/slices/authSlice';
 import toast from 'react-hot-toast';
-import { FiHome, FiPlusCircle, FiUser, FiLogOut, FiMenu } from 'react-icons/fi';
-import { useState } from 'react';
+import { 
+  Home, 
+  PlusCircle, 
+  LogOut, 
+} from 'lucide-react';
+import * as Tooltip from '@radix-ui/react-tooltip';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { Avatar } from '../ui/Avatar';
 import NotificationDropdown from './NotificationDropdown';
 import SearchBar from '../search/SearchBar';
 
@@ -14,7 +21,6 @@ export default function Navbar() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -29,165 +35,110 @@ export default function Navbar() {
 
   const isActive = (path) => location.pathname === path;
 
+  // Icon Button Style
+  
+
+  const renderNavItem = (path, icon, label) => {
+    const active = isActive(path);
+    const content = (
+      <Link
+        to={path}
+        className={`flex items-center gap-2 h-14 border-b-[3px] transition-colors duration-150 px-2 group ${
+          active 
+            ? 'border-primary text-primary' 
+            : 'border-transparent text-text-secondary hover:text-text-primary'
+        }`}
+      >
+        {React.cloneElement(icon, { 
+          className: `w-5 h-5 ${active ? 'text-primary' : 'text-text-secondary group-hover:text-text-primary'}` 
+        })}
+        <span className={`text-xs font-semibold ${active ? 'block' : 'hidden md:group-hover:block'}`}>
+          {label}
+        </span>
+      </Link>
+    );
+
+    if (active) return content;
+
+    return (
+      <Tooltip.Provider delayDuration={200}>
+        <Tooltip.Root>
+          <Tooltip.Trigger asChild>
+            {content}
+          </Tooltip.Trigger>
+          <Tooltip.Portal>
+            <Tooltip.Content
+              className="md:hidden bg-bg-primary text-text-primary text-xs font-semibold px-2 py-1 rounded shadow-md border border-border"
+              sideOffset={5}
+            >
+              {label}
+              <Tooltip.Arrow className="fill-bg-primary" />
+            </Tooltip.Content>
+          </Tooltip.Portal>
+        </Tooltip.Root>
+      </Tooltip.Provider>
+    );
+  };
+
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
-          {/* Logo */}
-          <Link to={isAuthenticated ? "/feed" : "/"} className="flex items-center flex-shrink-0">
-            <span className="text-2xl font-bold text-primary-600">EduConnect</span>
-          </Link>
+    <nav className="h-14 sticky top-0 z-50 bg-bg-primary border-b border-border flex items-center justify-between px-6 shadow-sm">
+      {/* Logo */}
+      <Link to={isAuthenticated ? "/feed" : "/"} className="flex items-center flex-shrink-0">
+        <span className="font-sans font-bold text-accent-orange text-xl tracking-tight">E</span>
+        <span className="font-sans font-bold text-[#1D1D1D] text-xl tracking-tight">dunet</span>
+      </Link>
 
-          {/* Search Bar (Desktop - center) */}
-          {isAuthenticated && (
-            <div className="hidden md:block flex-1 max-w-xl mx-8">
-              <SearchBar variant="navbar" />
-            </div>
-          )}
-
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-4">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/feed"
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/feed')
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <FiHome className="w-4 h-4" />
-                  <span>Feed</span>
-                </Link>
-
-                <Link
-                  to="/create-post"
-                  className={`flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/create-post')
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <FiPlusCircle className="w-4 h-4" />
-                  <span>Create</span>
-                </Link>
-
-                {/* Notification Bell */}
-                <NotificationDropdown />
-
-                <Link
-                  to="/dashboard"
-                  className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                    isActive('/dashboard')
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
-                >
-                  <FiUser className="w-4 h-4" />
-                  <span>{user?.username}</span>
-                </Link>
-
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center space-x-1 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  <FiLogOut className="w-4 h-4" />
-                  <span>Logout</span>
-                </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-primary-600 transition-colors"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  className="px-4 py-2 text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 rounded-md transition-colors"
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
-          </div>
-
-          {/* Mobile menu button */}
-          <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="md:hidden p-2 rounded-md text-gray-700 hover:bg-gray-100"
-          >
-            <FiMenu className="w-6 h-6" />
-          </button>
-        </div>
-
-        {/* Search Bar (Mobile - below navbar) */}
-        {isAuthenticated && (
-          <div className="md:hidden pb-3">
+      {/* Center Nav Items */}
+      {isAuthenticated && (
+        <div className="hidden md:flex items-center h-full gap-6 flex-1 max-w-3xl mx-8">
+          {renderNavItem('/feed', <Home />, 'Feed')}
+          <div className="flex-1 min-w-[280px] max-w-xl">
             <SearchBar variant="navbar" />
           </div>
-        )}
+          {renderNavItem('/create-post', <PlusCircle />, 'Create')}
+        </div>
+      )}
 
-        {/* Mobile Navigation */}
-        {mobileMenuOpen && (
-          <div className="md:hidden py-3 space-y-2">
-            {isAuthenticated ? (
-              <>
-                <Link
-                  to="/feed"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
-                >
-                  <FiHome className="w-4 h-4" />
-                  <span>Feed</span>
-                </Link>
-                <Link
-                  to="/create-post"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
-                >
-                  <FiPlusCircle className="w-4 h-4" />
-                  <span>Create Post</span>
-                </Link>
-                <Link
-                  to="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
-                >
-                  <FiUser className="w-4 h-4" />
-                  <span>Profile</span>
-                </Link>
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="w-full flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100 text-left"
-                >
-                  <FiLogOut className="w-4 h-4" />
-                  <span>Logout</span>
+      {/* Right Cluster */}
+      <div className="flex items-center gap-2 h-full">
+        {isAuthenticated ? (
+          <>
+            <NotificationDropdown />
+            
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger asChild>
+                <button className="rounded-full overflow-hidden hover:opacity-80 transition-opacity ml-2 outline-none" aria-label="User menu">
+                  <Avatar src={user?.avatar} alt="Profile" size="sm" showRing={user?.reputation > 500} />
                 </button>
-              </>
-            ) : (
-              <>
-                <Link
-                  to="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-100"
-                >
-                  Login
-                </Link>
-                <Link
-                  to="/register"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block px-3 py-2 rounded-md text-sm font-medium bg-primary-600 text-white hover:bg-primary-700"
-                >
-                  Sign Up
-                </Link>
-              </>
-            )}
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content className="w-48 bg-white rounded-lg shadow-dropdown border border-border p-1 z-50 mr-4 mt-2" align="end">
+                  <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md outline-none" onClick={() => navigate(`/user/${user?._id || user?.id}`)}>
+                    Profile
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md outline-none" onClick={() => navigate('/edit-profile')}>
+                    Edit Profile
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md outline-none" onClick={() => navigate('/settings')}>
+                    Settings
+                  </DropdownMenu.Item>
+                  <DropdownMenu.Separator className="h-px bg-border my-1" />
+                  <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md text-accent-red font-medium outline-none flex items-center gap-2" onSelect={handleLogout}>
+                    <LogOut className="w-4 h-4" />
+                    Logout
+                  </DropdownMenu.Item>
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            <Link to="/login" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors">
+              Sign In
+            </Link>
+            <Link to="/register" className="bg-primary hover:bg-primary-hover text-white rounded-pill px-5 py-2 text-sm font-semibold transition-all">
+              Join Free
+            </Link>
           </div>
         )}
       </div>

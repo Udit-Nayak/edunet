@@ -4,7 +4,6 @@
  */
 
 const axios = require('axios');
-const Post = require('../models/Post');
 const mongoose = require('mongoose');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
@@ -232,7 +231,7 @@ async function testEmptyTextHandling() {
   
   try {
     // Test with empty string
-    const response = await axios.post(`${SERVER_URL}/api/tags/suggest`, {
+    await axios.post(`${SERVER_URL}/api/tags/suggest`, {
       text: '',
       threshold: 0.3,
       top_k: 5

@@ -43,8 +43,7 @@ export default function PersonalizedFeed() {
         setPosts(response.data.posts || []);
         setIsPersonalized(false);
       }
-    } catch (err) {
-      console.error('Feed fetch error:', err);
+    } catch {
       setPosts([]);
     } finally {
       setLoading(false);

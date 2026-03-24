@@ -5,13 +5,14 @@ import { formatTimeAgo } from '../../utils/formatters';
 import { 
   FiBell, 
   FiCheck, 
-  FiTrash2, 
   FiArrowUp, 
   FiMessageSquare,
   FiCheckCircle,
   FiX
 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+// eslint-disable-next-line no-unused-vars
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function NotificationDropdown() {
   const [isOpen, setIsOpen] = useState(false);
@@ -49,8 +50,8 @@ export default function NotificationDropdown() {
     try {
       const response = await notificationAPI.getUnreadCount();
       setUnreadCount(response.data.count);
-    } catch (error) {
-      console.error('Error fetching unread count:', error);
+    } catch {
+      // Failed to fetch unread count - will retry on next interval
     }
   };
 
@@ -59,8 +60,7 @@ export default function NotificationDropdown() {
       setLoading(true);
       const response = await notificationAPI.getNotifications({ limit: 20 });
       setNotifications(response.data.notifications);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
+    } catch {
       toast.error('Failed to load notifications');
     } finally {
       setLoading(false);
@@ -124,133 +124,144 @@ export default function NotificationDropdown() {
       case 'post_upvote':
       case 'answer_upvote':
       case 'comment_upvote':
-        return <FiArrowUp className="w-4 h-4 text-primary-600" />;
+        return <FiArrowUp className="w-4 h-4 text-primary" />;
       case 'new_answer':
       case 'new_comment_on_post':
       case 'new_comment_on_answer':
       case 'reply_to_comment':
-        return <FiMessageSquare className="w-4 h-4 text-blue-600" />;
+        return <FiMessageSquare className="w-4 h-4 text-accent-blue" />;
       case 'answer_accepted':
-        return <FiCheckCircle className="w-4 h-4 text-green-600" />;
+        return <FiCheckCircle className="w-4 h-4 text-accent-green" />;
       default:
-        return <FiBell className="w-4 h-4 text-gray-600" />;
+        return <FiBell className="w-4 h-4 text-text-secondary" />;
     }
   };
 
   return (
     <div className="relative" ref={dropdownRef}>
       {/* Bell Icon */}
-      <button
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+        className="relative w-10 h-10 flex items-center justify-center text-text-secondary hover:bg-surface-hover hover:text-text-primary rounded-full transition-colors outline-none"
       >
-        <FiBell className="w-5 h-5" />
+        <FiBell className="w-[22px] h-[22px]" />
         {unreadCount > 0 && (
-          <span className="absolute top-0 right-0 inline-flex items-center justify-center w-5 h-5 text-xs font-bold text-white bg-red-600 rounded-full">
+          <span className="absolute top-1 right-1 flex items-center justify-center w-[18px] h-[18px] text-[10px] font-bold text-white bg-accent-red rounded-full border-2 border-bg-primary shadow-sm">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}
-      </button>
+      </motion.button>
 
       {/* Dropdown */}
-      {isOpen && (
-        <div className="absolute right-0 mt-2 w-96 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-[600px] overflow-hidden flex flex-col">
-          {/* Header */}
-          <div className="p-4 border-b border-gray-200 flex items-center justify-between">
-            <h3 className="text-lg font-semibold text-gray-900">Notifications</h3>
-            {unreadCount > 0 && (
-              <button
-                onClick={handleMarkAllAsRead}
-                className="text-sm text-primary-600 hover:text-primary-700"
-              >
-                Mark all as read
-              </button>
-            )}
-          </div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
+            className="absolute right-0 mt-3 w-80 sm:w-96 bg-bg-primary rounded-xl shadow-dropdown border border-border z-50 max-h-[600px] overflow-hidden flex flex-col origin-top-right"
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-border flex items-center justify-between bg-bg-secondary/50">
+              <h3 className="text-[16px] font-bold text-text-primary">Notifications</h3>
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllAsRead}
+                  className="text-[13px] font-bold text-primary hover:text-primary-hover transition-colors"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
 
-          {/* Notifications List */}
-          <div className="overflow-y-auto flex-1">
-            {loading ? (
-              <div className="p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
-              </div>
-            ) : notifications.length === 0 ? (
-              <div className="p-8 text-center text-gray-500">
-                <FiBell className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p>No notifications yet</p>
-              </div>
-            ) : (
-              <div className="divide-y divide-gray-100">
-                {notifications.map((notification) => (
-                  <div
-                    key={notification._id}
-                    onClick={() => handleNotificationClick(notification)}
-                    className={`p-4 hover:bg-gray-50 cursor-pointer transition-colors ${
-                      !notification.isRead ? 'bg-blue-50' : ''
-                    }`}
-                  >
-                    <div className="flex items-start space-x-3">
-                      {/* Sender Avatar */}
-                      <img
-                        src={notification.sender?.avatar}
-                        alt={notification.sender?.username}
-                        className="w-10 h-10 rounded-full flex-shrink-0"
-                      />
-
-                      {/* Content */}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <p className="text-sm text-gray-900">
-                              <span className="font-medium">
-                                {notification.sender?.username}
-                              </span>{' '}
-                              {notification.message}
-                            </p>
-                            {notification.post?.title && (
-                              <p className="text-xs text-gray-500 mt-1 truncate">
-                                "{notification.post.title}"
-                              </p>
-                            )}
-                            <p className="text-xs text-gray-400 mt-1">
-                              {formatTimeAgo(notification.createdAt)}
-                            </p>
-                          </div>
-
-                          {/* Icon */}
-                          <div className="ml-2 flex-shrink-0">
+            {/* Notifications List */}
+            <div className="overflow-y-auto flex-1 no-scrollbar">
+              {loading ? (
+                <div className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="p-10 text-center text-text-tertiary">
+                  <div className="w-16 h-16 bg-surface-hover rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FiBell className="w-8 h-8 text-text-tertiary opacity-50" />
+                  </div>
+                  <p className="text-[15px] font-medium text-text-primary mb-1">You're all caught up!</p>
+                  <p className="text-[13px] text-text-secondary">No new notifications.</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {notifications.map((notification) => (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      key={notification._id}
+                      onClick={() => handleNotificationClick(notification)}
+                      className={`p-4 hover:bg-surface-hover cursor-pointer transition-colors ${
+                        !notification.isRead ? 'bg-primary/5' : ''
+                      }`}
+                    >
+                      <div className="flex items-start space-x-3">
+                        {/* Sender Avatar */}
+                        <div className="relative">
+                          <img
+                            src={notification.sender?.avatar}
+                            alt={notification.sender?.username}
+                            className="w-10 h-10 rounded-full flex-shrink-0 object-cover border border-border"
+                          />
+                          <div className="absolute -bottom-1 -right-1 bg-bg-primary p-0.5 rounded-full shadow-sm">
                             {getNotificationIcon(notification.type)}
                           </div>
                         </div>
-                      </div>
 
-                      {/* Actions */}
-                      <div className="flex items-center space-x-1 flex-shrink-0">
-                        {!notification.isRead && (
+                        {/* Content */}
+                        <div className="flex-1 min-w-0 pr-2">
+                          <p className="text-[14px] text-text-primary leading-snug">
+                            <span className="font-bold">
+                              {notification.sender?.username}
+                            </span>{' '}
+                            <span className="text-text-secondary">{notification.message}</span>
+                          </p>
+                          {notification.post?.title && (
+                            <p className="text-[13px] font-medium text-text-primary mt-1.5 truncate border-l-2 border-border pl-2">
+                              "{notification.post.title}"
+                            </p>
+                          )}
+                          <p className="text-[11px] font-bold text-text-tertiary uppercase tracking-wider mt-2">
+                            {formatTimeAgo(notification.createdAt)}
+                          </p>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex flex-col items-center space-y-2 flex-shrink-0 opacity-0 md:group-hover:opacity-100 transition-opacity">
+                          {!notification.isRead && (
+                            <button
+                              onClick={(e) => handleMarkAsRead(notification._id, e)}
+                              className="w-7 h-7 flex items-center justify-center text-primary bg-bg-primary border border-border hover:bg-primary/10 hover:border-primary/30 rounded-lg transition-colors shadow-sm"
+                              title="Mark as read"
+                            >
+                              <FiCheck className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <button
-                            onClick={(e) => handleMarkAsRead(notification._id, e)}
-                            className="p-1 text-blue-600 hover:bg-blue-100 rounded"
-                            title="Mark as read"
+                            onClick={(e) => handleDelete(notification._id, e)}
+                            className="w-7 h-7 flex items-center justify-center text-accent-red bg-bg-primary border border-border hover:bg-accent-red/10 hover:border-accent-red/30 rounded-lg transition-colors shadow-sm"
+                            title="Delete"
                           >
-                            <FiCheck className="w-4 h-4" />
+                            <FiX className="w-3.5 h-3.5" />
                           </button>
-                        )}
-                        <button
-                          onClick={(e) => handleDelete(notification._id, e)}
-                          className="p-1 text-red-600 hover:bg-red-100 rounded"
-                          title="Delete"
-                        >
-                          <FiX className="w-4 h-4" />
-                        </button>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

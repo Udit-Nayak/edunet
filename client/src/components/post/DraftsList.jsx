@@ -4,6 +4,7 @@ import { formatTimeAgo, truncateText } from '../../utils/formatters';
 import { FiClock, FiTrash2, FiEdit3 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import LoadingSpinner from '../common/LoadingSpinner';
+import { Button } from '../ui/Button';
 
 export default function DraftsList({ onLoadDraft, onDeleteDraft }) {
   const [drafts, setDrafts] = useState([]);
@@ -19,8 +20,8 @@ export default function DraftsList({ onLoadDraft, onDeleteDraft }) {
       setLoading(true);
       const response = await postAPI.getMyDrafts();
       setDrafts(response.data.drafts);
-    } catch (error) {
-      console.error('Failed to fetch drafts:', error);
+    } catch {
+      // Failed to fetch drafts - show empty state
     } finally {
       setLoading(false);
     }
@@ -51,7 +52,7 @@ export default function DraftsList({ onLoadDraft, onDeleteDraft }) {
 
   if (loading) {
     return (
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+      <div className="bg-bg-secondary border border-border rounded-xl p-6 flex justify-center">
         <LoadingSpinner size="sm" text="Loading drafts..." />
       </div>
     );
@@ -62,68 +63,69 @@ export default function DraftsList({ onLoadDraft, onDeleteDraft }) {
   }
 
   return (
-    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-      <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center space-x-2">
-          <FiEdit3 className="w-5 h-5 text-blue-600" />
-          <h3 className="font-semibold text-blue-900">
+    <div className="bg-bg-secondary border border-border rounded-xl p-5 mb-6">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-white border border-border flex items-center justify-center shadow-sm">
+            <FiEdit3 className="w-4 h-4 text-primary" />
+          </div>
+          <h3 className="font-bold text-text-primary text-[15px]">
             Your Drafts ({drafts.length})
           </h3>
         </div>
         {drafts.length > 0 && (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setExpanded(!expanded)}
-            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            className="text-text-secondary hover:text-text-primary"
           >
-            {expanded ? 'Hide' : 'Show'}
-          </button>
+            {expanded ? 'Hide' : 'Show drafts'}
+          </Button>
         )}
       </div>
 
       {expanded && (
-        <div className="space-y-2">
+        <div className="space-y-3 mt-4">
           {drafts.map((draft) => (
             <div
               key={draft._id}
-              className="bg-white border border-blue-200 rounded-lg p-3 hover:border-blue-400 transition-colors cursor-pointer"
+              className="bg-white border border-border rounded-xl p-4 hover:border-border-hover hover:shadow-card transition-all cursor-pointer group"
               onClick={() => handleLoadDraft(draft)}
             >
               <div className="flex items-start justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-2 mb-1">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${
-                      draft.type === 'question' ? 'bg-blue-100 text-blue-700' :
-                      draft.type === 'note' ? 'bg-green-100 text-green-700' :
-                      'bg-purple-100 text-purple-700'
-                    }`}>
+                <div className="flex-1 min-w-0 pr-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-bg-secondary border border-border text-text-secondary">
                       {draft.type}
                     </span>
-                    <span className="flex items-center space-x-1 text-xs text-orange-600">
+                    <span className="flex items-center gap-1 text-[11px] font-bold text-accent-orange bg-accent-orange/10 px-2 py-0.5 rounded-md">
                       <FiClock className="w-3 h-3" />
                       <span>{draft.daysRemaining} day{draft.daysRemaining !== 1 ? 's' : ''} left</span>
                     </span>
                   </div>
                   
-                  <h4 className="font-medium text-gray-900 truncate mb-1">
+                  <h4 className="font-bold text-[15px] text-text-primary truncate mb-1 group-hover:text-primary transition-colors">
                     {draft.title || 'Untitled Draft'}
                   </h4>
                   
-                  <p className="text-sm text-gray-600 line-clamp-2">
+                  <p className="text-[13px] text-text-secondary line-clamp-2 leading-relaxed">
                     {truncateText(draft.content.replace(/<[^>]*>/g, ''), 100)}
                   </p>
                   
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-[11px] font-medium text-text-tertiary uppercase tracking-wider mt-3">
                     Last edited {formatTimeAgo(draft.updatedAt)}
                   </p>
                 </div>
 
-                <button
+                <Button
+                  variant="ghost"
                   onClick={(e) => handleDelete(draft._id, e)}
-                  className="ml-3 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                  className="text-text-tertiary hover:text-destructive hover:bg-destructive/10 h-8 w-8 p-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                   title="Delete draft"
                 >
                   <FiTrash2 className="w-4 h-4" />
-                </button>
+                </Button>
               </div>
             </div>
           ))}
@@ -131,8 +133,8 @@ export default function DraftsList({ onLoadDraft, onDeleteDraft }) {
       )}
 
       {!expanded && (
-        <p className="text-sm text-blue-700">
-          Click "Show" to view and load your saved drafts
+        <p className="text-[13px] text-text-tertiary ml-10.5 font-medium -mt-1">
+          You have unpublished work.
         </p>
       )}
     </div>

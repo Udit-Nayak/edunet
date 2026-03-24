@@ -1,5 +1,4 @@
 const notificationService = require("../services/notificationService");
-const NotificationService = require("../services/notificationService");
 const cacheService = require("../services/cacheService");
 
 exports.getNotifications = async (req, res) => {

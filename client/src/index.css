@@ -2,21 +2,48 @@
 @tailwind components;
 @tailwind utilities;
 
-/* .input-field {
-  @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500;
+:root {
+  --color-primary: #0A66C2;
+  --color-primary-hover: #004182;
+  --color-primary-light: #EAF3FB;
+  --color-accent-orange: #FF4500;
+  --color-accent-teal: #0DD3BB;
+  --color-accent-green: #46D160;
+  --color-accent-red: #FF585B;
+  --color-bg-primary: #FFFFFF;
+  --color-bg-secondary: #F3F2EF;
+  --color-bg-tertiary: #F6F7F8;
+  --color-text-primary: #1D1D1D;
+  --color-text-secondary: #666666;
+  --color-text-tertiary: #8E8E8E;
+  --color-border: #E0DED8;
+  --color-border-light: #DAE0E6;
+  --color-surface-hover: #F6F7F8;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06);
+  --shadow-dropdown: 0 8px 24px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-modal: 0 20px 60px rgba(0,0,0,0.20);
+  --shadow-input-focus: 0 0 0 2px rgba(10,102,194,0.25);
+  --radius-sm: 4px; --radius-md: 8px; --radius-lg: 12px;
+  --radius-xl: 20px; --radius-pill: 9999px;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px;
+  --space-5:20px; --space-6:24px; --space-8:32px; --space-10:40px;
+  --space-12:48px; --space-16:64px; --space-20:80px;
+  font-family: 'IBM Plex Sans', sans-serif;
 }
-
-.btn-primary {
-  @apply px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors;
+[data-theme="dark"] {
+  --color-bg-primary: #1A1A1B;
+  --color-bg-secondary: #131314;
+  --color-bg-card: #272729;
+  --color-border: #343536;
+  --color-border-light: #3c3c3d;
+  --color-text-primary: #D7DADC;
+  --color-text-secondary: #818384;
+  --color-text-tertiary: #5f6062;
+  --color-surface-hover: #2d2d2e;
 }
+body { background: var(--color-bg-secondary); color: var(--color-text-primary); transition: background-color 0.2s ease, color 0.2s ease; }
 
-.btn-secondary {
-  @apply px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors;
-}
-
-.card {
-  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
-} */
 .prose {
   color: #374151;
   max-width: 65ch;
@@ -114,4 +141,170 @@
 .prose th {
   background-color: #f9fafb;
   font-weight: 600;
+}
+
+/* Global Form and Button Utility Classes */
+.input-field {
+  @apply w-full px-4 py-[13px] bg-bg-primary text-text-primary text-[15px] font-medium border border-border rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all duration-200 placeholder:text-text-tertiary disabled:opacity-60 disabled:bg-bg-secondary;
+}
+
+.btn-primary {
+  @apply inline-flex items-center justify-center px-6 py-[11px] bg-primary text-white font-bold text-[15px] rounded-xl hover:bg-primary-hover active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm;
+}
+
+.btn-secondary {
+  @apply inline-flex items-center justify-center px-6 py-[11px] bg-bg-secondary text-text-secondary font-bold text-[15px] rounded-xl border border-border hover:bg-border-light hover:text-text-primary active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-danger {
+  @apply inline-flex items-center justify-center px-6 py-[11px] bg-red-500/10 text-red-500 font-bold text-[15px] rounded-xl border border-red-500/20 hover:bg-red-500/20 active:scale-[0.98] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Scrollbar Styles */
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Hidden scrollbar (scrolling still works) */
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;     /* Firefox */
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Edge */
+}
+
+/* Custom Scrollbar for areas that should show it */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* Main page scrollbar - same styling */
+html::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+html::-webkit-scrollbar-track {
+  background: var(--color-bg-secondary);
+  border-radius: 4px;
+}
+
+html::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+html::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-tertiary);
+}
+
+/* Firefox main scrollbar */
+html {
+  scrollbar-color: var(--color-border) var(--color-bg-secondary);
+  scrollbar-width: thin;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Focus visible styles for accessibility */
+*:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* Prevent text selection on interactive elements */
+button, .no-select {
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+
+/* Animation utility classes */
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-down {
+  from {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.2s ease-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.2s ease-out;
+}
+
+.animate-slide-down {
+  animation: slide-down 0.2s ease-out;
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .responsive-text {
+    font-size: 0.875rem;
+  }
+  
+  .responsive-padding {
+    padding: 0.75rem;
+  }
 }

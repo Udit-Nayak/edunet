@@ -45,8 +45,7 @@ export default function SaveButton({ postId, initialSaved = false, onSaveChange,
       }
 
       toast.success(newSaved ? 'Post saved!' : 'Post unsaved');
-    } catch (error) {
-      console.error('Save post error:', error);
+    } catch {
       toast.error('Failed to save post');
     } finally {
       setLoading(false);

@@ -21,6 +21,10 @@ import EditPost from './pages/EditPost';
 import PostDetail from './pages/PostDetail';
 import UserProfile from './pages/UserProfile';
 import Search from './pages/Search';
+import Subject from './pages/Subject';
+import Tag from './pages/Tag';
+import Settings from './pages/Settings';
+import SavedPosts from './pages/SavedPosts';
 
 // Loading Component
 function LoadingScreen() {
@@ -80,20 +84,16 @@ function ProtectedRoute({ children, skipProfileCheck = false }) {
   const { isAuthenticated, loading, needsProfileSetup } = useAuth();
   const location = useLocation();
 
-  console.log('ProtectedRoute:', { isAuthenticated, loading, needsProfileSetup, skipProfileCheck });
-
   if (loading) {
     return <LoadingScreen />;
   }
 
   if (!isAuthenticated) {
-    console.log('Not authenticated, redirecting to login with return path');
     // Save the current location so we can redirect back after login
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (!skipProfileCheck && needsProfileSetup) {
-    console.log('Needs profile setup, redirecting to profile-setup');
     return <Navigate to="/profile-setup" replace />;
   }
 
@@ -116,7 +116,6 @@ function PublicRoute({ children }) {
   if (isAuthenticated) {
     // Redirect to the page they were trying to access, or /feed if none
     const from = location.state?.from?.pathname || '/feed';
-    console.log('Already authenticated, redirecting to:', from);
     return <Navigate to={from} replace />;
   }
 
@@ -131,20 +130,15 @@ function AppContent() {
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      console.log('checkAuth - token:', token ? 'exists' : 'none');
       
       if (token) {
         try {
           dispatch(setLoading(true));
-          console.log('Fetching user data...');
           
           const response = await authAPI.getMe();
-          console.log('getMe response:', response.data);
           
           const user = response.data.user;
           const needsSetup = !user.bio && !user.college && user.interests.length === 0;
-          
-          console.log('User loaded:', user.username, 'needsSetup:', needsSetup);
           
           dispatch(loginSuccess({
             user: user,
@@ -152,16 +146,13 @@ function AppContent() {
             needsProfileSetup: needsSetup,
           }));
         } catch (error) {
-          console.error('Auth check failed:', error);
-          console.error('Error details:', error.response?.data);
-          
           // Clear invalid token
           localStorage.removeItem('token');
           dispatch(logout());
           
           // Show user-friendly error
           if (error.response?.status === 401) {
-            console.log('Session expired, please login again');
+            // Session expired - redirect to login
           } else if (!error.response) {
             setInitError('Cannot connect to server. Please make sure the backend is running on http://localhost:5000');
           }
@@ -169,7 +160,6 @@ function AppContent() {
           dispatch(setLoading(false));
         }
       } else {
-        console.log('No token found, user not logged in');
         dispatch(setLoading(false));
       }
     };
@@ -234,7 +224,12 @@ function AppContent() {
         <Route path="/user/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
         <Route path="/edit-profile" element={<ProtectedRoute skipProfileCheck={true}><EditProfile /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
+        <Route path="/subjects" element={<ProtectedRoute><Navigate to="/search" replace /></ProtectedRoute>} />
+        <Route path="/subject/:subject" element={<ProtectedRoute><Subject /></ProtectedRoute>} />
+        <Route path="/tag/:tag" element={<ProtectedRoute><Tag /></ProtectedRoute>} />
+        <Route path="/saved" element={<ProtectedRoute><SavedPosts /></ProtectedRoute>} />
 
         {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />

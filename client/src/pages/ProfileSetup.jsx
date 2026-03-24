@@ -6,18 +6,13 @@ import toast from "react-hot-toast";
 import { authAPI } from '../services/api';
 import { updateUser, setNeedsProfileSetup } from "../redux/slices/authSlice";
 import AvatarUpload from "../components/common/AvatarUpload";
+import { Button } from "../components/ui/Button";
+import { Input, Textarea } from "../components/ui/Input";
 
 export default function ProfileSetup() {
-  const { user, loading, isAuthenticated } = useAuth();
+  const { user, loading } = useAuth();
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  
-  // DEBUG: Log everything
-  console.log('=== ProfileSetup Render ===');
-  console.log('user:', user);
-  console.log('loading:', loading);
-  console.log('isAuthenticated:', isAuthenticated);
-  console.log('=========================');
   
   const [formData, setFormData] = useState({
     username: user?.username || '',
@@ -94,7 +89,6 @@ export default function ProfileSetup() {
       toast.success('Profile created successfully!');
       navigate('/feed');
     } catch (error) {
-      console.error('Profile update error:', error);
       toast.error(error.response?.data?.message || "Failed to update profile");
     } finally {
       setSubmitting(false);
@@ -103,12 +97,11 @@ export default function ProfileSetup() {
 
   // Show loading
   if (loading) {
-    console.log('Showing loading screen');
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-text-secondary font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -116,192 +109,169 @@ export default function ProfileSetup() {
 
   // Show error if no user
   if (!user) {
-    console.log('No user found - showing error');
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center p-8 bg-white rounded-lg shadow-sm">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">No User Data</h2>
-          <p className="text-gray-600 mb-4">Unable to load user information.</p>
-          <button
+      <div className="min-h-screen bg-bg-primary flex items-center justify-center">
+        <div className="text-center p-8 bg-bg-secondary rounded-xl shadow-card border border-border max-w-sm w-full mx-4">
+          <h2 className="text-2xl font-bold text-text-primary mb-4">No User Data</h2>
+          <p className="text-text-secondary mb-6 font-medium">Unable to load user information.</p>
+          <Button
             onClick={() => navigate('/login')}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+            className="w-full"
           >
             Go to Login
-          </button>
+          </Button>
         </div>
       </div>
     );
   }
 
-  console.log('Rendering main form');
-
   // Main render
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen bg-bg-primary py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+        <div className="text-center mb-10">
+          <h1 className="text-3xl sm:text-4xl font-bold text-text-primary">
             Welcome, {user.username}! 👋
           </h1>
-          <p className="mt-2 text-gray-600">
+          <p className="mt-3 text-[16px] text-text-secondary font-medium">
             Let's set up your profile to get started
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
-          <div className="space-y-6">{/* Removed form tag */}
+        <div className="bg-bg-secondary rounded-2xl shadow-card border border-border p-6 sm:p-10">
+          <div className="space-y-8">
             {/* Avatar Upload */}
-            <div className="flex justify-center pb-6 border-b border-gray-200">
+            <div className="flex flex-col items-center justify-center pb-8 border-b border-border">
               <AvatarUpload
                 currentAvatar={formData.avatar}
                 onAvatarChange={(url) => setFormData({ ...formData, avatar: url })}
                 size="xl"
               />
+              <p className="text-[13px] text-text-tertiary font-medium mt-4">Upload a profile picture to stand out.</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Bio
-              </label>
-              <textarea
+            <div className="space-y-6">
+              <Textarea
                 name="bio"
+                label="Bio"
                 rows="3"
                 value={formData.bio}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Tell us about yourself..."
               />
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Professional Headline
-              </label>
-              <input
-                name="headline"
-                type="text"
-                value={formData.headline}
-                onChange={handleChange}
-                maxLength={120}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="e.g., Computer Science Student | Full Stack Developer"
-              />
-              <p className="text-xs text-gray-500 mt-1">{formData.headline.length}/120 characters</p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Location
-              </label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input
-                  name="location.city"
+              <div>
+                <Input
+                  name="headline"
+                  label="Professional Headline"
                   type="text"
-                  value={formData.location.city}
+                  value={formData.headline}
                   onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="City"
+                  maxLength={120}
+                  placeholder="e.g., Computer Science Student | Full Stack Developer"
                 />
-                <input
-                  name="location.state"
-                  type="text"
-                  value={formData.location.state}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="State"
-                />
-                <input
-                  name="location.country"
-                  type="text"
-                  value={formData.location.country}
-                  onChange={handleChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                  placeholder="Country"
-                />
+                <p className="text-[12px] text-text-tertiary font-medium mt-1.5 text-right">{formData.headline.length}/120 characters</p>
               </div>
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                College/University
-              </label>
-              <input
-                name="college"
-                type="text"
-                value={formData.college}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="MIT, Stanford, etc."
-              />
-            </div>
+              <div>
+                <label className="block text-[14px] font-bold text-text-primary mb-2">
+                  Location
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Input
+                    name="location.city"
+                    type="text"
+                    value={formData.location.city}
+                    onChange={handleChange}
+                    placeholder="City"
+                  />
+                  <Input
+                    name="location.state"
+                    type="text"
+                    value={formData.location.state}
+                    onChange={handleChange}
+                    placeholder="State"
+                  />
+                  <Input
+                    name="location.country"
+                    type="text"
+                    value={formData.location.country}
+                    onChange={handleChange}
+                    placeholder="Country"
+                  />
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Year of Study
-              </label>
-              <select
-                name="yearOfStudy"
-                value={formData.yearOfStudy}
-                onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">Select year</option>
-                <option value="1">1st Year</option>
-                <option value="2">2nd Year</option>
-                <option value="3">3rd Year</option>
-                <option value="4">4th Year</option>
-                <option value="5">5th Year</option>
-                <option value="6">6th Year+</option>
-              </select>
-            </div>
+              <div>
+                <label className="block text-[14px] font-bold text-text-primary mb-2">
+                  Education Profile
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input
+                    name="college"
+                    type="text"
+                    value={formData.college}
+                    onChange={handleChange}
+                    placeholder="College/University (e.g., MIT, Stanford)"
+                  />
+                  <select
+                    name="yearOfStudy"
+                    value={formData.yearOfStudy}
+                    onChange={handleChange}
+                    className="w-full px-4 py-[13px] bg-bg-primary text-text-primary text-[15px] font-medium border border-border rounded-xl focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all duration-200 placeholder:text-text-tertiary"
+                  >
+                    <option value="">Select year of study</option>
+                    <option value="1">1st Year</option>
+                    <option value="2">2nd Year</option>
+                    <option value="3">3rd Year</option>
+                    <option value="4">4th Year</option>
+                    <option value="5">5th Year</option>
+                    <option value="6">6th Year+</option>
+                  </select>
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Interests (comma separated)
-              </label>
-              <input
+              <Input
                 name="interests"
+                label="Interests (comma separated)"
                 type="text"
                 value={formData.interests}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Python, AI, Web Dev"
               />
-            </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Website (optional)
-              </label>
-              <input
+              <Input
                 name="website"
+                label="Website (optional)"
                 type="url"
                 value={formData.website}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="https://yourwebsite.com"
               />
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
+            <div className="flex flex-col sm:flex-row gap-4 pt-4 border-t border-border">
+              <Button
                 type="button"
                 onClick={handleCreateAccount}
                 disabled={submitting}
-                className="flex-1 px-4 py-2 bg-primary-600 text-black rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                className="flex-1 sm:order-2"
+                size="lg"
               >
                 {submitting ? "Creating..." : "Create Account"}
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={handleSkip}
                 disabled={submitting}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
+                variant="secondary"
+                className="sm:order-1"
+                size="lg"
               >
                 Skip for now
-              </button>
+              </Button>
             </div>
-          </div>{/* Removed closing form tag */}
+          </div>
         </div>
       </div>
     </div>

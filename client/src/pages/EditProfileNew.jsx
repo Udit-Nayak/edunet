@@ -5,7 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
 import { authAPI } from '../services/api';
 import { updateUser, setNeedsProfileSetup } from '../redux/slices/authSlice';
-import Navbar from '../components/common/Navbar';
+import PageShell from '../components/common/PageShell';
 import AvatarUpload from '../components/common/AvatarUpload';
 import { FiPlus, FiTrash2, FiSave, FiBriefcase, FiBookOpen, FiCode, FiAward, FiGlobe, FiMapPin, FiX } from 'react-icons/fi';
 
@@ -148,17 +148,13 @@ export default function EditProfile() {
         publications: formData.publications
       };
 
-      console.log('📤 Sending profile data:', profileData);
-
       const response = await authAPI.updateProfile(profileData);
-      
-      console.log('📥 Received response:', response.data);
       
       dispatch(updateUser(response.data.user));
       dispatch(setNeedsProfileSetup(false));
 
       toast.success('Profile updated successfully!');
-      navigate('/dashboard');
+      navigate(`/user/${user._id}`);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
@@ -175,26 +171,24 @@ export default function EditProfile() {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <PageShell showRightSidebar={false}>
+      <div className="max-w-4xl mx-auto pb-12">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Edit Profile</h1>
-          <p className="text-gray-600">Build your professional profile</p>
+          <h1 className="text-3xl font-bold text-text-primary mb-2">Edit Profile</h1>
+          <p className="text-[15px] font-medium text-text-secondary">Build your professional profile</p>
         </div>
 
         {/* Tabs */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 mb-6">
-          <div className="flex overflow-x-auto">
+        <div className="bg-bg-secondary rounded-xl shadow-card border border-border mb-6 overflow-hidden">
+          <div className="flex overflow-x-auto no-scrollbar">
             {tabs.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 min-w-max px-6 py-4 font-medium transition-colors border-b-2 ${
+                className={`flex-1 min-w-max px-6 py-4 font-bold text-[14px] transition-colors border-b-2 outline-none ${
                   activeTab === tab.id
-                    ? 'border-primary-600 text-primary-600 bg-primary-50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'border-primary text-primary bg-primary/5'
+                    : 'border-transparent text-text-secondary hover:text-text-primary hover:bg-surface-hover'
                 }`}
               >
                 <div className="flex items-center justify-center space-x-2">
@@ -261,8 +255,8 @@ export default function EditProfile() {
           )}
 
           {/* Action Buttons */}
-          <div className="flex justify-between items-center bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <Link to="/dashboard" className="btn-secondary">
+          <div className="flex justify-between items-center bg-bg-secondary rounded-xl shadow-card border border-border p-6 mt-8">
+            <Link to={`/user/${user._id}`} className="btn-secondary">
               Cancel
             </Link>
             <button
@@ -276,7 +270,7 @@ export default function EditProfile() {
           </div>
         </form>
       </div>
-    </div>
+    </PageShell>
   );
 }
 

@@ -65,7 +65,7 @@ async function batchGenerateEmbeddings() {
       const healthResponse = await axios.get(`${ML_SERVICE_URL}/health`);
       console.log("✅ ML service is healthy\n");
       console.log(`   Model dimension: ${healthResponse.data.embedding_dim}`);
-    } catch (error) {
+    } catch {
       console.error("❌ ML service is not available!");
       console.error("   Please start the ML service first:");
       console.error("   cd ml-service && python -m uvicorn app.main:app --reload\n");

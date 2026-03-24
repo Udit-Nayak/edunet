@@ -27,18 +27,6 @@ class MLService {
       return false;
     }
   }
-  async getSimilarPosts(postId, limit = 10) {
-    try {
-      const response = await axios.post(
-        `${ML_SERVIE_URL}/api/recomment/similar`,
-        { post_id: postId, limit },
-      );
-      return response.data.posts;
-    } catch (error) {
-      console.error("ML Service error:", error.message);
-      return [];
-    }
-  }
 
   async generateEmbedding(text) {
     try {
@@ -339,7 +327,7 @@ class MLService {
    * Get cold start vector for new users based on interests
    * Enhanced version: uses top posts from selected tags when available
    */
-  async getColdStartVector(interestTags, userId = null) {
+  async getColdStartVector(interestTags) {
     try {
       if (!interestTags || interestTags.length === 0) {
         return null;
@@ -1291,7 +1279,7 @@ class MLService {
       ).catch(() => {}); // Ignore errors
       
       return true;
-    } catch (error) {
+    } catch {
       // Don't throw - tracking shouldn't block main flow
       return false;
     }
@@ -1307,7 +1295,7 @@ class MLService {
         { timeout: 2000 }
       );
       return response.data.status === 'ok' || response.data.status === 'healthy';
-    } catch (error) {
+    } catch {
       return false;
     }
   }

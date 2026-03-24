@@ -20,8 +20,8 @@ export default function CommentList({ postId, answerId }) {
         ? await commentAPI.getCommentsByPost(postId)
         : await commentAPI.getCommentsByAnswer(answerId);
       setComments(response.data.comments);
-    } catch (error) {
-      console.error('Failed to load comments:', error);
+    } catch {
+      // Failed to load comments - show empty state
     } finally {
       setLoading(false);
     }
@@ -31,8 +31,8 @@ export default function CommentList({ postId, answerId }) {
     fetchComments();
   };
 
-  const handleCommentDelete = (commentId) => {
-    setComments((prev) => prev.filter((c) => c._id !== commentId));
+  const handleCommentDelete = () => {
+    fetchComments();
   };
 
   if (loading) {
@@ -46,6 +46,7 @@ export default function CommentList({ postId, answerId }) {
           key={comment._id}
           comment={comment}
           onDelete={handleCommentDelete}
+          onRefresh={fetchComments}
         />
       ))}
       <CommentForm

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
@@ -6,6 +6,10 @@ import { authAPI } from '../services/api';
 import { loginSuccess, setLoading } from '../redux/slices/authSlice';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../services/firebase';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+// eslint-disable-next-line no-unused-vars
+import { motion } from 'framer-motion';
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -17,8 +21,7 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Get the page they were trying to visit, or default to /dashboard
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || '/feed';
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -35,11 +38,10 @@ export default function Login() {
       dispatch(loginSuccess({
         user: response.data.user,
         token: response.data.token,
-        needsProfileSetup: false, // Existing users don't need setup
+        needsProfileSetup: false,
       }));
 
       toast.success('Logged in successfully!');
-      // Redirect to the page they were trying to visit
       navigate(from, { replace: true });
     } catch (error) {
       toast.error(error.response?.data?.message || 'Login failed');
@@ -59,7 +61,7 @@ export default function Login() {
 
       const response = await authAPI.googleAuth(firebaseToken);
 
-    const isNewUser = response.data.isNewUser;
+      const isNewUser = response.data.isNewUser;
 
       dispatch(loginSuccess({
         user: response.data.user,
@@ -67,12 +69,11 @@ export default function Login() {
         needsProfileSetup: isNewUser,
       }));
 
-    toast.success(isNewUser ? 'Account created with Google!' : 'Signed in with Google!');
+      toast.success(isNewUser ? 'Account created with Google!' : 'Signed in with Google!');
       
       if (isNewUser) {
         navigate('/profile-setup');
       } else {
-        // Redirect to the page they were trying to visit
         navigate(from, { replace: true });
       }
     } catch (error) {
@@ -84,89 +85,125 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <Link to="/" className="flex justify-center">
-            <h1 className="text-3xl font-bold text-primary-600">EduConnect</h1>
+    <div className="min-h-screen flex bg-white">
+      {/* Left Split Screen (Hidden on Mobile) */}
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-primary-light via-[#EAF3FB] to-bg-secondary flex-col items-center justify-center p-12 relative overflow-hidden">
+        {/* Decorative Abstract Shapes */}
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-primary opacity-5 rounded-full blur-[80px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-accent-orange opacity-5 rounded-full blur-[80px]"></div>
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="z-10 text-center max-w-md"
+        >
+          <Link to="/" className="inline-flex items-center justify-center mb-8">
+          <span className="font-sans font-bold text-accent-orange text-4xl tracking-tight">E</span>
+            <span className="font-sans font-bold text-[#1D1D1D] text-4xl tracking-tight">dunet</span>
+            
           </Link>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
-              Sign up
-            </Link>
+          <h2 className="text-3xl font-bold text-text-primary mb-4">Welcome back to the community</h2>
+          <p className="text-lg text-text-secondary leading-relaxed">
+            Connect with peers, discover expertly crafted notes, and elevate your academic journey.
           </p>
-        </div>
+        </motion.div>
+      </div>
 
-        <div className="card">
-          {/* Google Sign In */}
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <img
-              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-              alt="Google"
-              className="w-5 h-5 mr-2"
-            />
-            Continue with Google
-          </button>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
+      {/* Right Auth Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12">
+        <div className="max-w-md w-full space-y-8">
+          
+          {/* Mobile Logo Only */}
+          <div className="lg:hidden text-center mb-10">
+            <Link to="/" className="inline-flex items-center justify-center">
+            <span className="font-sans font-bold text-accent-orange text-3xl tracking-tight">E</span>
+              <span className="font-sans font-bold text-[#1D1D1D] text-3xl tracking-tight">dunet</span>
+              
+            </Link>
           </div>
 
-          {/* Email/Password Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="you@example.com"
-              />
-            </div>
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl font-bold text-text-primary">Sign in</h2>
+            <p className="mt-2 text-sm text-text-secondary">
+              Don't have an account?{' '}
+              <Link to="/register" className="font-semibold text-primary hover:text-primary-hover transition-colors">
+                Sign up
+              </Link>
+            </p>
+          </div>
 
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
+          <div className="mt-8 space-y-6">
+            <Button
+              variant="secondary"
+              block
+              onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full btn-primary"
+              className="flex items-center justify-center gap-2 h-12"
             >
-              {loading ? 'Signing in...' : 'Sign in'}
-            </button>
-          </form>
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="Google"
+                className="w-5 h-5"
+              />
+              Continue with Google
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-3 bg-white text-text-tertiary">Or sign in with email</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1">
+                <label htmlFor="email" className="block text-sm font-semibold text-text-primary">
+                  Email
+                </label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  placeholder="you@example.com"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <label htmlFor="password" className="block text-sm font-semibold text-text-primary">
+                    Password
+                  </label>
+                  <Link to="#" className="text-xs font-semibold text-primary hover:text-primary-hover">
+                    Forgot password?
+                  </Link>
+                </div>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                block
+                disabled={loading}
+                className="h-12 mt-2"
+              >
+                {loading ? 'Signing in...' : 'Sign In'}
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

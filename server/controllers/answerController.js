@@ -1,6 +1,5 @@
 const Answer = require('../models/Answer');
 const Post = require('../models/Post');
-const User = require('../models/User');
 const cacheService = require('../services/cacheService');
 const reputationService=require("../services/reputationService");
 const notificationService = require('../services/notificationService');

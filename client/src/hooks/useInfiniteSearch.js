@@ -60,6 +60,15 @@ export const useInfiniteSearch = (query, filters = {}) => {
 
   // Reset and load initial results when query or filters change
   useEffect(() => {
+    let isCancelled = false;
+    let parsedFilters = {};
+
+    try {
+      parsedFilters = JSON.parse(filtersString);
+    } catch {
+      parsedFilters = {};
+    }
+
     // Clear previous results
     setResults([]);
     setCursor(null);
@@ -70,11 +79,43 @@ export const useInfiniteSearch = (query, filters = {}) => {
     // Only search if query has at least 2 characters
     if (query && query.trim().length >= 2) {
       // Small delay to prevent too many rapid searches
-      const timer = setTimeout(() => {
-        loadMore();
+      const timer = setTimeout(async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+          const response = await searchAPI.search({
+            q: query,
+            cursor: null,
+            limit: 15,
+            ...parsedFilters,
+          });
+
+          if (isCancelled) return;
+
+          setResults(response.data.posts || []);
+          setCursor(response.data.nextCursor || null);
+          setHasMore(Boolean(response.data.hasMore));
+
+          searchAPI.trackSearch(query).catch(() => {});
+        } catch (err) {
+          if (isCancelled) return;
+
+          console.error('Search error:', err);
+          setError(err.response?.data?.message || 'Failed to load results');
+          toast.error('Failed to search');
+        } finally {
+          if (!isCancelled) {
+            setLoading(false);
+            setInitialLoad(false);
+          }
+        }
       }, 300);
       
-      return () => clearTimeout(timer);
+      return () => {
+        isCancelled = true;
+        clearTimeout(timer);
+      };
     } else {
       setInitialLoad(false);
       setLoading(false);

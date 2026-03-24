@@ -1,7 +1,6 @@
 const Comment = require("../models/Comment");
 const Post = require("../models/Post");
 const Answer = require("../models/Answer");
-const User = require("../models/User");
 const cacheService = require("../services/cacheService");
 const notificationService = require('../services/notificationService'); 
 
@@ -46,10 +45,6 @@ exports.createComment = async (req, res) => {
       }
     }
 
-        let postAuthorId = null;
-    let actualPostId = postId;
-
-
     // Verify post or answer exists
     if (postId) {
       const post = await Post.findByIdAndUpdate(postId, { $inc: { commentCount: 1 } });
@@ -59,8 +54,6 @@ exports.createComment = async (req, res) => {
           message: "Post not found",
         });
       }
-      postAuthorId = post.authorId;
-      
       // Increment view count for commenting on post
       const isAuthor = post.authorId.toString() === req.user._id.toString();
       if (!isAuthor) {
@@ -83,8 +76,6 @@ exports.createComment = async (req, res) => {
           message: "Answer not found",
         });
       }
-      actualPostId = answer.postId;
-      
       // Get the post to increment view count
       const post = await Post.findById(answer.postId);
       if (post) {

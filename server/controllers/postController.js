@@ -1,6 +1,7 @@
 const Post = require("../models/Post");
 const Answer = require("../models/Answer");
 const User = require("../models/User");
+const mongoose = require("mongoose");
 const cacheService = require("../services/cacheService");
 const storageService = require("../services/storageService");
 const reputationService = require("../services/reputationService");
@@ -320,6 +321,7 @@ exports.getPostById = async (req, res) => {
   }
 };
 
+// eslint-disable-next-line no-unused-vars
 async function getSimilarLivePosts(postId, limit = 5) {
   try {
     const cacheKey = `embedding:post:${postId}`;

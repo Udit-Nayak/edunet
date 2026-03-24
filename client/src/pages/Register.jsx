@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
@@ -6,6 +6,10 @@ import { authAPI } from '../services/api';
 import { loginSuccess, setLoading } from '../redux/slices/authSlice';
 import { signInWithPopup } from 'firebase/auth';
 import { auth, googleProvider } from '../services/firebase';
+import { Button } from '../components/ui/Button';
+import { Input } from '../components/ui/Input';
+// eslint-disable-next-line no-unused-vars
+import { motion } from 'framer-motion';
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -19,8 +23,7 @@ export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Get the page they were trying to visit, or default to /dashboard
-  const from = location.state?.from?.pathname || '/dashboard';
+  const from = location.state?.from?.pathname || '/feed';
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -29,7 +32,6 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation
     if (formData.password !== formData.confirmPassword) {
       toast.error('Passwords do not match');
       return;
@@ -53,7 +55,7 @@ export default function Register() {
       dispatch(loginSuccess({
         user: response.data.user,
         token: response.data.token,
-        needsProfileSetup: true, // New user needs profile setup
+        needsProfileSetup: true,
       }));
 
       toast.success('Account created successfully!');
@@ -71,28 +73,23 @@ export default function Register() {
     dispatch(setLoading(true));
 
     try {
-      // Sign in with Google
       const result = await signInWithPopup(auth, googleProvider);
       const firebaseToken = await result.user.getIdToken();
 
-      // Send token to backend
       const response = await authAPI.googleAuth(firebaseToken);
-
       const isNewUser = response.data.isNewUser;
-
 
       dispatch(loginSuccess({
         user: response.data.user,
         token: response.data.token,
-        needsProfileSetup: isNewUser, // New users need profile setup
+        needsProfileSetup: isNewUser,
       }));
 
-    toast.success(isNewUser ? 'Account created with Google!' : 'Signed in with Google!');
+      toast.success(isNewUser ? 'Account created with Google!' : 'Signed in with Google!');
       
       if (isNewUser) {
         navigate('/profile-setup');
       } else {
-        // Redirect to the page they were trying to visit
         navigate(from, { replace: true });
       }
     } catch (error) {
@@ -104,121 +101,152 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <Link to="/" className="flex justify-center">
-            <h1 className="text-3xl font-bold text-primary-600">EduConnect</h1>
+    <div className="min-h-screen flex bg-white">
+      {/* Left Split Screen (Hidden on Mobile) */}
+      <div className="hidden lg:flex w-1/2 bg-gradient-to-br from-primary-light via-[#EAF3FB] to-bg-secondary flex-col items-center justify-center p-12 relative overflow-hidden">
+        {/* Decorative Abstract Shapes */}
+        <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-primary opacity-5 rounded-full blur-[80px]"></div>
+        <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-accent-orange opacity-5 rounded-full blur-[80px]"></div>
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="z-10 text-center max-w-md"
+        >
+          <Link to="/" className="inline-flex items-center justify-center mb-8">
+          <span className="font-sans font-bold text-accent-orange text-4xl tracking-tight">E</span>
+            <span className="font-sans font-bold text-[#1D1D1D] text-4xl tracking-tight">dunet</span>
+            
           </Link>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
-              Sign in
-            </Link>
+          <h2 className="text-3xl font-bold text-text-primary mb-4">Start your learning journey</h2>
+          <p className="text-lg text-text-secondary leading-relaxed">
+            Join thousands of students collaborating to build the best academic knowledge base in the world.
           </p>
-        </div>
+        </motion.div>
+      </div>
 
-        <div className="card">
-          {/* Google Sign In */}
-          <button
-            onClick={handleGoogleSignIn}
-            disabled={loading}
-            className="w-full flex items-center justify-center px-4 py-2.5 border border-gray-300 rounded-lg shadow-sm bg-white text-gray-700 hover:bg-gray-50 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <img
-              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
-              alt="Google"
-              className="w-5 h-5 mr-2"
-            />
-            Continue with Google
-          </button>
-
-          <div className="relative my-6">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
-            </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
+      {/* Right Auth Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 sm:p-12 overflow-y-auto">
+        <div className="max-w-md w-full space-y-8 my-auto py-8">
+          
+          {/* Mobile Logo Only */}
+          <div className="lg:hidden text-center mb-10">
+            <Link to="/" className="inline-flex items-center justify-center">
+            <span className="font-sans font-bold text-accent-orange text-3xl tracking-tight">E</span>
+              <span className="font-sans font-bold text-[#1D1D1D] text-3xl tracking-tight">dunet</span>
+              
+            </Link>
           </div>
 
-          {/* Email/Password Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="you@example.com"
-              />
-            </div>
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl font-bold text-text-primary">Create an account</h2>
+            <p className="mt-2 text-sm text-text-secondary">
+              Already have an account?{' '}
+              <Link to="/login" className="font-semibold text-primary hover:text-primary-hover transition-colors">
+                Sign in
+              </Link>
+            </p>
+          </div>
 
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-1">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                value={formData.username}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="johndoe"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="input-field"
-                placeholder="••••••••"
-              />
-            </div>
-
-            <button
-              type="submit"
+          <div className="mt-8 space-y-6">
+            <Button
+              variant="secondary"
+              block
+              onClick={handleGoogleSignIn}
               disabled={loading}
-              className="w-full btn-primary"
+              className="flex items-center justify-center gap-2 h-12"
             >
-              {loading ? 'Creating account...' : 'Create account'}
-            </button>
-          </form>
+              <img
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg"
+                alt="Google"
+                className="w-5 h-5"
+              />
+              Continue with Google
+            </Button>
+
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-3 bg-white text-text-tertiary">Or register with email</span>
+              </div>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <label htmlFor="username" className="block text-sm font-semibold text-text-primary">
+                    Username
+                  </label>
+                  <Input
+                    id="username"
+                    name="username"
+                    type="text"
+                    required
+                    value={formData.username}
+                    onChange={handleChange}
+                    placeholder="johndoe"
+                  />
+                </div>
+                
+                <div className="space-y-1">
+                  <label htmlFor="email" className="block text-sm font-semibold text-text-primary">
+                    Email
+                  </label>
+                  <Input
+                    id="email"
+                    name="email"
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    placeholder="you@example.com"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="password" className="block text-sm font-semibold text-text-primary">
+                  Password
+                </label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="At least 6 characters"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label htmlFor="confirmPassword" className="block text-sm font-semibold text-text-primary">
+                  Confirm Password
+                </label>
+                <Input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  placeholder="Confirm your password"
+                />
+              </div>
+
+              <Button
+                type="submit"
+                variant="primary"
+                block
+                disabled={loading}
+                className="h-12 mt-4"
+              >
+                {loading ? 'Creating account...' : 'Create Account'}
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
     </div>

@@ -7,7 +7,6 @@ import { formatNumber } from "../../utils/formatters";
 export default function SimilarPosts({ postId }) {
   const [similarPosts, setSimilarPosts] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     if (postId) {
@@ -24,61 +23,49 @@ export default function SimilarPosts({ postId }) {
       if (response.data.success) {
         setSimilarPosts(response.data.similarPosts || []);
       }
-      setError(null);
-    } catch (err) {
-      console.error("Failed to fetch similar posts:", err);
-      setError(err.response?.data?.message || "Failed to load similar posts");
+    } catch {
+      // Failed to fetch similar posts - component will show empty state
     } finally {
       setLoading(false);
     }
   };
 
-  // Don't show if loading fails or no posts
-  if (error || (!loading && similarPosts.length === 0)) {
-    return null;
-  }
-
+  // Show loading state
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <FiZap className="w-5 h-5 text-primary-600" />
-          <h2 className="text-lg font-semibold text-gray-900">
-            Similar Posts
-          </h2>
-        </div>
-        <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="animate-pulse">
-              <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-              <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-            </div>
-          ))}
-        </div>
+      <div className="space-y-3">
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="animate-pulse">
+            <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+            <div className="h-3 bg-gray-100 rounded w-1/2"></div>
+          </div>
+        ))}
       </div>
     );
   }
 
-  return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      {/* Header */}
-      <div className="flex items-center space-x-2 mb-4">
-        <FiZap className="w-5 h-5 text-primary-600" />
-        <h2 className="text-lg font-semibold text-gray-900">Similar Posts</h2>
-        <span className="text-xs text-gray-500 ml-auto">
-          AI-powered · ~50x faster
-        </span>
+  // Show empty state if no posts or error
+  if (!similarPosts || similarPosts.length === 0) {
+    return (
+      <div className="p-4 bg-gray-50 rounded-lg border border-gray-200 text-center">
+        <FiZap className="w-5 h-5 text-gray-400 mx-auto mb-2" />
+        <p className="text-sm text-gray-500">No similar discussions found yet.</p>
+        <p className="text-xs text-gray-400 mt-1">Similar posts will appear as the community grows.</p>
       </div>
+    );
+  }
 
-      {/* Similar Posts List */}
-      <div className="space-y-4">
+
+
+  return (
+    <div className="space-y-3">
         {similarPosts.map((post) => (
           <Link
             key={post._id}
             to={`/post/${post._id}`}
             className="block group"
           >
-            <div className="border border-gray-200 rounded-lg p-4 hover:border-primary-400 hover:bg-primary-50 transition-all duration-200">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 hover:border-primary-400 hover:bg-primary-50 transition-all duration-200">
               {/* Badge */}
               <div className="flex items-center justify-between mb-2">
                 <span
@@ -146,13 +133,5 @@ export default function SimilarPosts({ postId }) {
           </Link>
         ))}
       </div>
-
-      {/* Info Footer */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <p className="text-xs text-gray-500 text-center">
-          Powered by Approximate Nearest Neighbors (ANN) search
-        </p>
-      </div>
-    </div>
-  );
+    );
 }

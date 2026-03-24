@@ -19,7 +19,6 @@ const {
   getSimilarPosts,
 } = require('../controllers/postController');
 const { protect } = require('../middleware/authMiddleware');
-const mlService = require('../services/mlService');
 const { getPersonalizedFeed, semanticSearch, getHybridFeed } = require('../controllers/personalizedFeedController');
 
 
@@ -47,7 +46,7 @@ const optionalAuth = async (req, res, next) => {
     }
     
     next();
-  } catch (error) {
+  } catch {
     next();
   }
 };

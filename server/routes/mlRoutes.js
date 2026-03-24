@@ -123,7 +123,7 @@ router.post('/track/interaction', protect, async (req, res) => {
       success: true,
       message: 'Interaction tracked'
     });
-  } catch (error) {
+  } catch {
     // Don't fail - tracking is non-critical
     res.json({
       success: true,

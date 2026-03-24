@@ -1,17 +1,23 @@
+import React, { useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState, useRef } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import { useInteractionTracking, useViewportTracking, useListItemTracking } from "../../hooks/useInteractionTracking";
 import { formatTimeAgo, formatNumber, truncateText } from "../../utils/formatters";
 import VoteButton from "./VoteButton";
 import { postAPI } from "../../services/api";
-import { FiMessageSquare, FiEye, FiCheckCircle, FiMoreVertical, FiImage } from "react-icons/fi";
+import { MessageSquare, Eye, CheckCircle, MoreVertical, Image, Bookmark, Share2 } from "lucide-react";
 import ConfirmDialog from "../common/ConfirmDialog";
 import toast from "react-hot-toast";
 import MediaViewer from "../common/MediaViewer";
 import SaveButton from './SaveButton';
 
-export default function PostCard({ post, onDelete, position = 0, source = 'feed' }) {
+// UI Components
+import { Card } from '../ui/Card';
+import { Avatar } from '../ui/Avatar';
+import { TypeBadge, RepBadge } from '../ui/Badge';
+import { Tag, SubjectBadge } from '../ui/Tag';
+
+export default function PostCard({ post, onDelete, position = 0, source = 'feed', onUnsave }) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const cardRef = useRef(null);
@@ -35,9 +41,17 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
   // Track when post becomes visible in viewport
   useViewportTracking(cardRef, post._id, (postId) => {
     if(user){
-    trackView(postId, source, position);
+      trackView(postId, source, position);
     }
   });
+
+  // Handle save/unsave changes
+  const handleSaveChange = (isSaved) => {
+    if (!isSaved && onUnsave) {
+      // If post was unsaved and we're on saved posts page, notify parent
+      onUnsave(post._id);
+    }
+  };
 
   // Handle post click with tracking
   const handlePostClick = (e) => {
@@ -45,14 +59,13 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
     if (
       e.target.closest('button') || 
       e.target.closest('a') || 
-      e.target.closest('.vote-button')
+      e.target.closest('.interactive-area') // A class we can add to non-navigable areas
     ) {
       return;
     }
 
     trackClick(post._id, source, position);
     
-    // If it's a draft, open edit page directly
     if (isDraft) {
       navigate(`/post/${post._id}/edit`);
     } else {
@@ -60,40 +73,15 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
     }
   };
 
-  // Handle tag click with tracking
   const handleTagClick = (e, tag) => {
     e.stopPropagation();
+    e.preventDefault();
     trackTagClick(post._id, tag);
     navigate(`/tag/${tag}`);
   };
 
-  const getTypeColor = (type) => {
-    switch (type) {
-      case "question":
-        return "bg-blue-100 text-blue-700";
-      case "note":
-        return "bg-green-100 text-green-700";
-      case "article":
-        return "bg-purple-100 text-purple-700";
-      default:
-        return "bg-gray-100 text-gray-700";
-    }
-  };
-
-  const getTypeIcon = (type) => {
-    switch (type) {
-      case "question":
-        return "❓";
-      case "note":
-        return "📝";
-      case "article":
-        return "📄";
-      default:
-        return "📌";
-    }
-  };
-
   const getPlainText = (html) => {
+    if (!html) return "";
     const tmp = document.createElement("div");
     tmp.innerHTML = html;
     return tmp.textContent || tmp.innerText || "";
@@ -104,9 +92,8 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
       await postAPI.publishDraft(post._id);
       toast.success("Draft published successfully!");
       if (onDelete) {
-        onDelete(post._id); // Remove from drafts list
+        onDelete(post._id); 
       }
-      // Optionally navigate or refresh
       window.location.reload();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to publish draft");
@@ -125,255 +112,276 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
     }
   };
 
+  const handleShare = (e) => {
+    e.stopPropagation();
+    e.preventDefault();
+    navigator.clipboard.writeText(`${window.location.origin}/post/${post._id}`);
+    toast.success("Link copied to clipboard");
+  };
+
   return (
     <>
-      <div 
-        ref={cardRef}
-        className={`bg-white rounded-lg shadow-sm border transition-shadow cursor-pointer ${
-          isDraft 
-            ? 'border-orange-200 hover:border-orange-300 hover:shadow-md hover:bg-orange-50' 
-            : 'border-gray-200 hover:shadow-md'
-        }`}
-        onClick={handlePostClick}
-        title={isDraft ? 'Click to edit this draft' : ''}
-      >
-        <div className="p-4">
-          {/* Header */}
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center space-x-3 flex-1 min-w-0">
-              <img
-                src={
-                  post.authorId?.avatar ||
-                  `https://ui-avatars.com/api/?name=${post.authorId?.username}&background=random`
-                }
-                alt={post.authorId?.username}
-                className="w-10 h-10 rounded-full flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2">
-                  <Link
-                    to={`/user/${post.authorId?._id}`}
-                    className="font-medium text-gray-900 hover:text-primary-600 truncate"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {post.authorId?.username}
-                  </Link>
-                  <span className="text-gray-500">•</span>
-                  <span className="text-sm text-gray-500">
-                    {formatTimeAgo(post.createdAt)}
-                  </span>
-                </div>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span
-                    className={`text-xs px-2 py-0.5 rounded-full ${getTypeColor(post.type)}`}
-                  >
-                    {getTypeIcon(post.type)} {post.type}
-                  </span>
-                  {isDraft && (
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 font-medium">
-                      📝 Draft
-                    </span>
-                  )}
-                  {post.isEdited && !isDraft && (
-                    <span className="text-xs text-gray-500">(edited)</span>
-                  )}
-                </div>
-              </div>
-            </div>
+      <div ref={cardRef}>
+        <Card 
+          hoverable 
+          onClick={handlePostClick} 
+          className={`flex flex-row gap-3 p-4 cursor-pointer w-full text-left my-2 ${isDraft ? 'border-accent-orange bg-orange-50/30' : ''}`}
+          title={isDraft ? 'Click to edit this draft' : ''}
+        >
+          {/* Left Column: Vote Controls */}
+          <div className="w-10 flex flex-col items-center shrink-0 interactive-area">
+            <VoteButton
+              targetId={post._id}
+              initialVotes={post.netVotes || 0}
+              userVote={post.userVote}
+              onUpvote={postAPI.upvotePost}
+              onDownvote={postAPI.downvotePost}
+            />
+          </div>
 
-            {isAuthor && (
-              <div className="relative" onClick={(e) => e.stopPropagation()}>
-                <button
-                  onClick={() => setShowMenu(!showMenu)}
-                  className="p-1 hover:bg-gray-100 rounded"
-                >
-                  <FiMoreVertical className="w-5 h-5 text-gray-500" />
-                </button>
-                {showMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                    {isDraft && (
+          {/* Right Column: Main Content */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            
+            {/* Row 1: Badges & Right Menu */}
+            <div className="flex items-start justify-between mb-1.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <TypeBadge type={post.type} />
+                {post.subject && (
+                  <SubjectBadge subjectColor={post.subjectColor || '#0A66C2'}>
+                    {post.subject}
+                  </SubjectBadge>
+                )}
+                {isDraft && (
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-orange-100 text-accent-orange font-medium">
+                    📝 Draft
+                  </span>
+                )}
+                {post.isEdited && !isDraft && (
+                  <span className="text-xs text-text-secondary italic">(edited)</span>
+                )}
+              </div>
+
+              {isAuthor && (
+                <div className="relative interactive-area shrink-0 hidden sm:block">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      setShowMenu(!showMenu);
+                    }}
+                    className="p-1 rounded-full hover:bg-bg-secondary text-text-secondary hover:text-text-primary transition-colors"
+                  >
+                    <MoreVertical className="w-5 h-5" />
+                  </button>
+                  {showMenu && (
+                    <div className="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-dropdown border border-border py-1 z-10">
+                      {isDraft && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePublish();
+                            setShowMenu(false);
+                          }}
+                          className="w-full text-left px-4 py-2 hover:bg-bg-secondary text-sm text-accent-green font-medium"
+                        >
+                          Publish Draft
+                        </button>
+                      )}
                       <button
-                        onClick={() => {
-                          handlePublish();
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/post/${post._id}/edit`);
                           setShowMenu(false);
                         }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-green-600 font-medium"
+                        className="w-full text-left px-4 py-2 hover:bg-bg-secondary text-sm text-text-primary"
                       >
-                        ✅ Publish Draft
+                        Edit
                       </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setShowDeleteDialog(true);
+                          setShowMenu(false);
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-bg-secondary text-sm text-accent-red"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Row 2: Title & Excerpt */}
+            <h2 className="text-base font-semibold text-text-primary group-hover:text-primary transition-colors line-clamp-2 mt-0.5 mb-1 pr-4">
+              {post.title}
+            </h2>
+            <p className="text-sm text-text-secondary line-clamp-2">
+              {truncateText(getPlainText(post.content), 200)}
+            </p>
+
+            {/* Attachments Preview - Included here if present */}
+            {post.attachments && post.attachments.length > 0 && (
+              <div className="mt-3 interactive-area">
+                {post.attachments.length === 1 ? (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setMediaViewerIndex(0);
+                      setMediaViewerOpen(true);
+                    }}
+                    className="relative group w-full text-left"
+                  >
+                    {post.attachments[0].type === "image" ? (
+                      <img
+                        src={post.attachments[0].url}
+                        alt={post.attachments[0].name}
+                        className="w-full h-48 sm:h-64 object-cover rounded-lg border border-border group-hover:opacity-90 transition-opacity"
+                      />
+                    ) : (
+                      <div className="flex items-center space-x-3 p-4 bg-bg-secondary rounded-lg border border-border hover:bg-bg-tertiary transition-colors">
+                        <Image className="w-6 h-6 text-text-secondary" />
+                        <div className="flex-1 text-left min-w-0">
+                          <p className="text-sm font-medium text-text-primary truncate">
+                            {post.attachments[0].name}
+                          </p>
+                          <p className="text-xs text-text-secondary">PDF Document</p>
+                        </div>
+                      </div>
                     )}
-                    <button
-                      onClick={() => {
-                        navigate(`/post/${post._id}/edit`);
-                        setShowMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm"
-                    >
-                      {isDraft ? '✏️ Edit Draft' : 'Edit'}
-                    </button>
-                    <button
-                      onClick={() => {
-                        setShowDeleteDialog(true);
-                        setShowMenu(false);
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-sm text-red-600"
-                    >
-                      🗑️ Delete
-                    </button>
+                  </button>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {post.attachments.slice(0, 4).map((attachment, index) => (
+                      <button
+                        key={index}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setMediaViewerIndex(index);
+                          setMediaViewerOpen(true);
+                        }}
+                        className="relative group text-left"
+                      >
+                        {attachment.type === "image" ? (
+                          <>
+                            <img
+                              src={attachment.url}
+                              alt={attachment.name}
+                              className="w-full h-24 sm:h-32 object-cover rounded-lg border border-border group-hover:opacity-90 transition-opacity"
+                            />
+                            {index === 3 && post.attachments.length > 4 && (
+                              <div className="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex items-center justify-center">
+                                <span className="text-white text-xl font-bold">
+                                  +{post.attachments.length - 4}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="w-full h-24 sm:h-32 bg-bg-secondary rounded-lg border border-border flex items-center justify-center group-hover:bg-bg-tertiary transition-colors">
+                            <Image className="w-6 h-6 text-text-secondary" />
+                          </div>
+                        )}
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
             )}
-          </div>
 
-          {/* Content */}
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-2 hover:text-primary-600 transition-colors">
-              {post.title}
-            </h2>
-            <p className="text-gray-600 mb-3 line-clamp-3">
-              {truncateText(getPlainText(post.content), 200)}
-            </p>
-          </div>
+            {/* Row 4: Tags */}
+            {post.tags && post.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2.5 interactive-area">
+                {post.tags.slice(0, 5).map((tag, index) => (
+                  <Tag key={index} onClick={(e) => handleTagClick(e, tag)}>
+                    {tag}
+                  </Tag>
+                ))}
+                {post.tags.length > 5 && (
+                  <span className="text-xs px-2 py-1 text-text-tertiary self-center">
+                    +{post.tags.length - 5}
+                  </span>
+                )}
+              </div>
+            )}
 
-          {/* Tags */}
-          {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 mb-3" onClick={(e) => e.stopPropagation()}>
-              {post.tags.slice(0, 5).map((tag, index) => (
-                <button
-                  key={index}
-                  onClick={(e) => handleTagClick(e, tag)}
-                  className="text-xs px-2 py-1 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+            {/* Row 5: Meta Bar */}
+            <div className="flex items-center flex-wrap gap-2 mt-3.5 text-xs text-text-tertiary interactive-area w-full">
+              {/* Left Side: Avatar & Info */}
+              <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                <Link
+                  to={`/user/${post.authorId?._id}`}
+                  className="flex items-center gap-1.5 hover:opacity-80 transition-opacity shrink-0"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  #{tag}
-                </button>
-              ))}
-              {post.tags.length > 5 && (
-                <span className="text-xs px-2 py-1 text-gray-500">
-                  +{post.tags.length - 5} more
-                </span>
-              )}
-            </div>
-          )}
-
-          {/* Attachments Preview */}
-          {post.attachments && post.attachments.length > 0 && (
-            <div className="mb-3" onClick={(e) => e.stopPropagation()}>
-              {post.attachments.length === 1 ? (
-                <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setMediaViewerIndex(0);
-                    setMediaViewerOpen(true);
-                  }}
-                  className="relative group w-full"
-                >
-                  {post.attachments[0].type === "image" ? (
-                    <img
-                      src={post.attachments[0].url}
-                      alt={post.attachments[0].name}
-                      className="w-full h-64 object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity"
-                    />
-                  ) : (
-                    <div className="flex items-center space-x-3 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors">
-                      <FiImage className="w-6 h-6 text-gray-500" />
-                      <div className="flex-1 text-left">
-                        <p className="text-sm font-medium text-gray-900">
-                          {post.attachments[0].name}
-                        </p>
-                        <p className="text-xs text-gray-500">PDF Document</p>
-                      </div>
-                    </div>
-                  )}
-                </button>
-              ) : (
-                <div className="grid grid-cols-2 gap-2">
-                  {post.attachments.slice(0, 4).map((attachment, index) => (
-                    <button
-                      key={index}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setMediaViewerIndex(index);
-                        setMediaViewerOpen(true);
-                      }}
-                      className="relative group"
-                    >
-                      {attachment.type === "image" ? (
-                        <>
-                          <img
-                            src={attachment.url}
-                            alt={attachment.name}
-                            className="w-full h-32 object-cover rounded-lg border border-gray-200 group-hover:opacity-90 transition-opacity"
-                          />
-                          {index === 3 && post.attachments.length > 4 && (
-                            <div className="absolute inset-0 bg-black bg-opacity-60 rounded-lg flex items-center justify-center">
-                              <span className="text-white text-2xl font-bold">
-                                +{post.attachments.length - 4}
-                              </span>
-                            </div>
-                          )}
-                        </>
-                      ) : (
-                        <div className="w-full h-32 bg-red-100 rounded-lg border border-gray-200 flex items-center justify-center group-hover:bg-red-200 transition-colors">
-                          <FiImage className="w-8 h-8 text-red-600" />
-                        </div>
-                      )}
-                    </button>
-                  ))}
+                  <Avatar 
+                    src={post.authorId?.avatar} 
+                    alt={post.authorId?.username} 
+                    size="xs" 
+                    showRing={post.authorId?.reputation > 500} 
+                  />
+                  <span className="font-medium text-text-primary pr-1">
+                    {post.authorId?.username}
+                  </span>
+                </Link>
+                <div className="shrink-0 hidden sm:block">
+                  <RepBadge score={post.authorId?.reputation || 0} isTopContributor={post.authorId?.reputation > 500} />
                 </div>
-              )}
-            </div>
-          )}
-
-          {/* Footer */}
-          <div className="flex items-center justify-between pt-3 border-t border-gray-100" onClick={(e) => e.stopPropagation()}>
-            <div className="vote-button">
-              <VoteButton
-                targetId={post._id}
-                initialVotes={post.netVotes || 0}
-                userVote={post.userVote}
-                onUpvote={postAPI.upvotePost}
-                onDownvote={postAPI.downvotePost}
-                size="md"
-              />
-            </div>
-
-            <SaveButton 
-              postId={post._id}
-              initialSaved={post.isSaved}
-              showCount={isAuthor}
-              saveCount={post.saveCount}
-            />
-
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <Link
-                to={`/post/${post._id}`}
-                className="flex items-center space-x-1 hover:text-primary-600"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <FiMessageSquare className="w-4 h-4" />
-                <span>{formatNumber(post.answerCount || 0)} answers</span>
-              </Link>
-
-              <div className="flex items-center space-x-1">
-                <FiEye className="w-4 h-4" />
-                <span>{formatNumber(post.viewCount || 0)} views</span>
+                <span className="hidden sm:inline">•</span>
+                <span className="shrink-0">{formatTimeAgo(post.createdAt)}</span>
               </div>
 
-              {post.type === "question" && post.acceptedAnswerId && (
-                <div className="flex items-center space-x-1 text-green-600">
-                  <FiCheckCircle className="w-4 h-4" />
-                  <span>Solved</span>
+              {/* Right Side: Actions */}
+              <div className="flex items-center gap-1 sm:gap-3 shrink-0 ml-auto">
+                {post.type === "question" && post.acceptedAnswerId && (
+                  <div className="flex flex-row items-center space-x-1 text-accent-green mr-1 sm:mr-2">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="hidden sm:inline">Solved</span>
+                  </div>
+                )}
+                
+                <Link
+                  to={`/post/${post._id}`}
+                  className="flex items-center gap-1.5 p-1.5 rounded hover:bg-bg-secondary text-text-secondary hover:text-primary transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  <span>{formatNumber(post.answerCount || 0)}</span>
+                </Link>
+
+                <div className="hidden sm:flex items-center gap-1.5 p-1.5 text-text-secondary">
+                  <Eye className="w-4 h-4" />
+                  <span>{formatNumber(post.viewCount || 0)}</span>
                 </div>
-              )}
+
+                <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+                  <SaveButton 
+                    postId={post._id}
+                    initialSaved={post.isSaved}
+                    showCount={false}
+                    saveCount={post.saveCount}
+                    onSaveChange={handleSaveChange}
+                    className="p-1.5 rounded-full hover:bg-bg-secondary text-text-secondary transition-colors"
+                  />
+                </div>
+
+                <button 
+                  onClick={handleShare}
+                  className="p-1.5 rounded-full hover:bg-bg-secondary text-text-secondary transition-colors"
+                  title="Copy link"
+                >
+                  <Share2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+
           </div>
-        </div>
+        </Card>
       </div>
 
-      {/* Media Viewer Modal */}
       {mediaViewerOpen && (
         <MediaViewer
           attachments={post.attachments}
@@ -382,7 +390,6 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
         />
       )}
 
-      {/* Delete Confirmation Dialog */}
       <ConfirmDialog
         isOpen={showDeleteDialog}
         onClose={() => setShowDeleteDialog(false)}

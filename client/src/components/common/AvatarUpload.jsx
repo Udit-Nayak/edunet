@@ -55,8 +55,7 @@ export default function AvatarUpload({ currentAvatar, onAvatarChange, size = 'lg
       
       // Clean up object URL
       URL.revokeObjectURL(objectUrl);
-    } catch (error) {
-      console.error('Avatar upload error:', error);
+    } catch {
       toast.error('Failed to upload avatar');
       setPreviewUrl(currentAvatar);
     } finally {

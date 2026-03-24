@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import Navbar from '../components/common/Navbar';
+import PageShell from '../components/common/PageShell';
 import SearchFilters from '../components/search/SearchFilters';
 import SearchResults from '../components/search/SearchResults';
 import { useInfiniteSearch } from '../hooks/useInfiniteSearch';
+import { FiSearch } from 'react-icons/fi';
 
 export default function Search() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -48,15 +49,12 @@ export default function Search() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Main Content - NO DUPLICATE SEARCH BAR */}
+    <PageShell showRightSidebar={false}>
+      <div className="w-full max-w-5xl mx-auto py-2">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Filters Sidebar */}
-          <aside className="lg:col-span-1">
-            <div className="sticky top-6">
+          <aside className="lg:col-span-1 border-r border-border pr-6 hidden lg:block">
+            <div className="sticky top-20">
               <SearchFilters
                 filters={filters}
                 onFilterChange={handleFilterChange}
@@ -67,6 +65,15 @@ export default function Search() {
 
           {/* Results Area */}
           <main className="lg:col-span-3">
+            {/* Mobile Filters (visible only on small screens, SearchFilters handles internal toggle) */}
+            <div className="block lg:hidden mb-6">
+              <SearchFilters
+                filters={filters}
+                onFilterChange={handleFilterChange}
+                onClearAll={handleClearFilters}
+              />
+            </div>
+
             {query ? (
               <SearchResults
                 query={query}
@@ -79,19 +86,21 @@ export default function Search() {
                 initialLoad={initialLoad}
               />
             ) : (
-              <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
-                <div className="text-gray-400 text-6xl mb-4">🔍</div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              <div className="bg-white rounded-xl shadow-card border border-border p-12 flex flex-col items-center justify-center text-center">
+                <div className="w-20 h-20 bg-bg-secondary rounded-full flex items-center justify-center mb-6 border border-border">
+                  <FiSearch className="w-10 h-10 text-text-tertiary" />
+                </div>
+                <h2 className="text-2xl font-bold text-text-primary mb-2">
                   Start Searching
                 </h2>
-                <p className="text-gray-600">
-                  Use the search bar above to find posts, questions, and articles
+                <p className="text-text-secondary max-w-sm">
+                  Use the search bar above to find posts, questions, discussions, and articles across the Edunet network.
                 </p>
               </div>
             )}
           </main>
         </div>
       </div>
-    </div>
+    </PageShell>
   );
 }

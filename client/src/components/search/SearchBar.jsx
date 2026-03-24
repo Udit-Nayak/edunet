@@ -26,7 +26,7 @@ export default function SearchBar({ initialQuery = "", variant = "navbar" }) {
         setQuery(urlQuery);
       }
     }
-  }, [location]);
+  }, [location, query]);
 
   // Load recent searches from localStorage
   const [recentSearches, setRecentSearches] = useState(() => {

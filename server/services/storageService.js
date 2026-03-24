@@ -7,11 +7,10 @@ class StorageService{
    * @param {string} bucket - Bucket name (post-attachments, answer-attachments, user-avatars)
    * @param {string} userId - User ID for folder organization
    * @param {string} fileName - Original file name
-   * @param {number} expiresIn - URL expiry in seconds (default: 3600 = 1 hour)
    * @returns {object} - { uploadUrl, filePath, publicUrl }
    */
 
-  async getUploadUrl(bucket, userId, fileName, expiresIn=3600){
+  async getUploadUrl(bucket, userId, fileName){
     try{
         const validBuckets=['post-attachments', 'answer-attachments','user-avatars'];
 

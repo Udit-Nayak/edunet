@@ -3,7 +3,7 @@
  * Format: base64(timestamp_postId)
  */
 exports.generateCursor= (post)=>{
-    if(!post)return numm;
+  if(!post)return null;
 
     const timestamp=new Date(post.createdAt).getTime();
     const cursorString=`${timestamp}_${post._id}`;

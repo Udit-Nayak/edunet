@@ -22,10 +22,7 @@ export const useInteractionTracking = () => {
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.log('No auth token, skipping view tracking');
-        return;
-      }
+      if (!token) return;
 
       await axios.post(
         `${API_BASE}/analytics/track-interaction`,
@@ -45,9 +42,8 @@ export const useInteractionTracking = () => {
           }
         }
       );
-      console.log(`✅ Tracked view for post ${postId}`);
-    } catch (error) {
-      console.error('Error tracking view:', error.response?.data || error.message);
+    } catch {
+      // Silently fail - analytics shouldn't break the UI
     }
   }, []);
 
@@ -59,10 +55,7 @@ export const useInteractionTracking = () => {
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.log('No auth token, skipping click tracking');
-        return;
-      }
+      if (!token) return;
 
       await axios.post(
         `${API_BASE}/analytics/track-interaction`,
@@ -82,9 +75,8 @@ export const useInteractionTracking = () => {
           }
         }
       );
-      console.log(`✅ Tracked click for post ${postId}`);
-    } catch (error) {
-      console.error('Error tracking click:', error.response?.data || error.message);
+    } catch {
+      // Silently fail - analytics shouldn't break the UI
     }
   }, []);
 
@@ -96,10 +88,7 @@ export const useInteractionTracking = () => {
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.log('No auth token, skipping detailed view tracking');
-        return;
-      }
+      if (!token) return;
 
       await axios.post(
         `${API_BASE}/analytics/track-interaction`,
@@ -120,9 +109,8 @@ export const useInteractionTracking = () => {
           }
         }
       );
-      console.log(`✅ Tracked detailed view for post ${postId} (${Math.round(timeSpent)}s, ${Math.round(scrollDepth)}%)`);
-    } catch (error) {
-      console.error('Error tracking detailed view:', error.response?.data || error.message);
+    } catch {
+      // Silently fail - analytics shouldn't break the UI
     }
   }, []);
 
@@ -134,10 +122,7 @@ export const useInteractionTracking = () => {
 
     try {
       const token = localStorage.getItem('token');
-      if (!token) {
-        console.log('No auth token, skipping tag click tracking');
-        return;
-      }
+      if (!token) return;
 
       await axios.post(
         `${API_BASE}/analytics/track-interaction`,
@@ -156,9 +141,8 @@ export const useInteractionTracking = () => {
           }
         }
       );
-      console.log(`✅ Tracked tag click: ${tag} on post ${postId}`);
-    } catch (error) {
-      console.error('Error tracking tag click:', error.response?.data || error.message);
+    } catch {
+      // Silently fail - analytics shouldn't break the UI
     }
   }, []);
 
@@ -174,10 +158,15 @@ export const useInteractionTracking = () => {
  * Hook to track time spent on a page
  */
 export const useTimeTracking = (postId, source = 'detail') => {
-  const startTime = useRef(Date.now());
+  const startTime = useRef(null);
   const { trackDetailedView } = useInteractionTracking();
 
   useEffect(() => {
+    // Initialize start time on mount
+    if (!startTime.current) {
+      startTime.current = Date.now();
+    }
+    
     let scrollDepth = 0;
 
     const handleScroll = () => {
@@ -213,6 +202,8 @@ export const useViewportTracking = (ref, postId, onView) => {
   useEffect(() => {
     if (!ref.current || hasTracked.current) return;
 
+    const element = ref.current;
+
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -229,12 +220,10 @@ export const useViewportTracking = (ref, postId, onView) => {
       }
     );
 
-    observer.observe(ref.current);
+    observer.observe(element);
 
     return () => {
-      if (ref.current) {
-        observer.unobserve(ref.current);
-      }
+      observer.unobserve(element);
     };
   }, [ref, postId, onView]);
 };

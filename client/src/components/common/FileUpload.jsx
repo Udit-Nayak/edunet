@@ -143,7 +143,6 @@ export default function FileUpload({
       const fileInput = document.getElementById('file-upload');
       if (fileInput) fileInput.value = '';
     } catch (error) {
-      console.error('Upload error:', error);
       toast.error(error.message || 'Upload failed');
     } finally {
       setUploading(false);

@@ -115,7 +115,7 @@ async function generateTrainingData() {
           if (created % 100 === 0 || created === toCreate) {
             console.log(`   ✓ Created ${created}/${toCreate} interactions`);
           }
-        } catch (error) {
+        } catch {
           // Some might be duplicates, that's okay
           created += batch.length;
         }

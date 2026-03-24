@@ -10,7 +10,6 @@ const Interaction = require('../models/Interaction');
 const mongoose = require('mongoose');
 
 const ML_SERVICE_URL = process.env.ML_SERVICE_URL || 'http://localhost:8000';
-const SERVER_URL = process.env.SERVER_URL || 'http://localhost:5000';
 
 async function testCollaborativeFilterAvailability() {
   console.log('\n📋 Test 1: Collaborative Filter Availability');
@@ -249,7 +248,7 @@ async function testContentVsCollaborative() {
         });
         
         contentBasedCount = contentRecs.ranked_posts?.length || 0;
-      } catch (e) {
+      } catch {
         // Neural ranking might not be available
       }
     }
@@ -264,7 +263,7 @@ async function testContentVsCollaborative() {
       );
       
       collaborativeCount = cfRecs.length;
-    } catch (e) {
+    } catch {
       // CF might not be available
     }
     

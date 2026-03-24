@@ -82,12 +82,11 @@ commentSchema.index({ authorId: 1, createdAt: -1 });
 commentSchema.index({ parentCommentId: 1 });
 
 // Custom validation: either postId or answerId must be present
-commentSchema.pre('validate', function(next) {
+commentSchema.pre('validate', function() {
   if (!this.postId && !this.answerId) {
     this.invalidate('postId', 'Either postId or answerId must be provided');
     this.invalidate('answerId', 'Either postId or answerId must be provided');
   }
-//   next();
 });
 
 // Method to get public comment data

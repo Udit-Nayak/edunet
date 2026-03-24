@@ -22,6 +22,7 @@ export const authAPI = {
   logout: () => API.post('/auth/logout'),
   updateProfile: (data) => API.put('/auth/profile', data),
   updateUsername: (username) => API.put('/auth/username', { username }),
+  changePassword: (data) => API.put('/auth/password', data),
 };
 
 export const uploadAPI = {
@@ -51,6 +52,7 @@ export const postAPI = {
   cleanupOldDrafts: () => API.delete('/posts/drafts/cleanup'),
   publishDraft: (id) => API.put(`/posts/${id}`, { status: 'published' }),
   getHybridFeed: (params) => API.get('/posts/hybrid-feed', { params }),
+  getPersonalizedFeed: (params) => API.get('/posts/personalized-feed', { params }),
   getSimilarPosts: (id, params) => API.get(`/posts/${id}/similar`, { params }),
 };
 

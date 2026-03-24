@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { FiArrowUp, FiArrowDown } from 'react-icons/fi';
 import { formatNumber } from '../../utils/formatters';
 import toast from 'react-hot-toast';
+// eslint-disable-next-line no-unused-vars
+import { motion } from 'framer-motion';
 
 export default function VoteButton({ 
   targetId, 
@@ -10,12 +12,36 @@ export default function VoteButton({
   onUpvote,
   onDownvote,
   size = 'md',
-  onUpvoteTracking, // Phase 9: Tracking callback
-  onDownvoteTracking // Phase 9: Tracking callback
+  onUpvoteTracking,
+  onDownvoteTracking,
+  horizontal = false // added horizontal variant support
 }) {
   const [votes, setVotes] = useState(initialVotes);
   const [currentVote, setCurrentVote] = useState(userVote);
   const [loading, setLoading] = useState(false);
+
+  const sizeStyles = {
+    sm: {
+      button: 'w-6 h-6',
+      icon: 'w-4 h-4',
+      text: 'text-xs',
+      containerVertical: 'w-8',
+    },
+    md: {
+      button: 'w-7 h-7',
+      icon: 'w-[18px] h-[18px]',
+      text: 'text-sm',
+      containerVertical: 'w-10',
+    },
+    lg: {
+      button: 'w-8 h-8',
+      icon: 'w-5 h-5',
+      text: 'text-base',
+      containerVertical: 'w-12',
+    },
+  };
+
+  const currentSize = sizeStyles[size] || sizeStyles.md;
 
   const handleUpvote = async () => {
     if (loading) return;
@@ -25,20 +51,15 @@ export default function VoteButton({
       await onUpvote(targetId);
       
       if (currentVote === 'upvote') {
-        // Remove upvote
         setVotes(votes - 1);
         setCurrentVote(null);
       } else if (currentVote === 'downvote') {
-        // Change from downvote to upvote
         setVotes(votes + 2);
         setCurrentVote('upvote');
-        // Phase 9: Track upvote
         if (onUpvoteTracking) onUpvoteTracking();
       } else {
-        // Add upvote
         setVotes(votes + 1);
         setCurrentVote('upvote');
-        // Phase 9: Track upvote
         if (onUpvoteTracking) onUpvoteTracking();
       }
     } catch {
@@ -56,20 +77,15 @@ export default function VoteButton({
       await onDownvote(targetId);
       
       if (currentVote === 'downvote') {
-        // Remove downvote
         setVotes(votes + 1);
         setCurrentVote(null);
       } else if (currentVote === 'upvote') {
-        // Change from upvote to downvote
         setVotes(votes - 2);
         setCurrentVote('downvote');
-        // Phase 9: Track downvote
         if (onDownvoteTracking) onDownvoteTracking();
       } else {
-        // Add downvote
         setVotes(votes - 1);
         setCurrentVote('downvote');
-        // Phase 9: Track downvote
         if (onDownvoteTracking) onDownvoteTracking();
       }
     } catch{
@@ -79,57 +95,53 @@ export default function VoteButton({
     }
   };
 
-  const sizeClasses = {
-    sm: 'text-xs',
-    md: 'text-sm',
-    lg: 'text-base',
-  };
-
-  const iconSizeClasses = {
-    sm: 'w-4 h-4',
-    md: 'w-5 h-5',
-    lg: 'w-6 h-6',
-  };
+  const containerClass = horizontal 
+    ? "flex flex-row items-center gap-1"
+    : `flex flex-col items-center gap-1 ${currentSize.containerVertical}`;
 
   return (
-    <div className={`flex items-center space-x-2 ${sizeClasses[size]}`}>
-      <button
+    <div className={containerClass}>
+      <motion.button
+        whileTap={{ scale: 1.3 }}
+        transition={{ type: "spring", stiffness: 400, damping: 10 }}
         onClick={handleUpvote}
         disabled={loading}
-        className={`p-1 rounded transition-colors disabled:opacity-50 ${
+        className={`${currentSize.button} rounded-full flex items-center justify-center transition-colors disabled:opacity-50 ${
           currentVote === 'upvote'
-            ? 'text-primary-600 bg-primary-50'
-            : 'text-gray-500 hover:text-primary-600 hover:bg-gray-100'
+            ? 'text-accent-orange'
+            : 'text-text-secondary hover:text-accent-orange hover:bg-[rgba(255,69,0,0.08)]'
         }`}
         title="Upvote"
       >
-        <FiArrowUp className={iconSizeClasses[size]} />
-      </button>
+        <FiArrowUp className={currentSize.icon} />
+      </motion.button>
       
       <span
-        className={`font-semibold min-w-[2rem] text-center ${
-          votes > 0
-            ? 'text-primary-600'
-            : votes < 0
-            ? 'text-red-600'
-            : 'text-gray-700'
+        className={`${currentSize.text} font-semibold text-center ${
+          currentVote === 'upvote'
+            ? 'text-accent-orange'
+            : currentVote === 'downvote'
+            ? 'text-accent-red'
+            : 'text-text-primary'
         }`}
       >
         {formatNumber(votes)}
       </span>
       
-      <button
+      <motion.button
+        whileTap={{ scale: 1.3 }}
+        transition={{ type: "spring", stiffness: 400, damping: 10 }}
         onClick={handleDownvote}
         disabled={loading}
-        className={`p-1 rounded transition-colors disabled:opacity-50 ${
+        className={`${currentSize.button} rounded-full flex items-center justify-center transition-colors disabled:opacity-50 ${
           currentVote === 'downvote'
-            ? 'text-red-600 bg-red-50'
-            : 'text-gray-500 hover:text-red-600 hover:bg-gray-100'
+            ? 'text-accent-red'
+            : 'text-text-secondary hover:text-accent-red hover:bg-[rgba(255,69,0,0.08)]'
         }`}
         title="Downvote"
       >
-        <FiArrowDown className={iconSizeClasses[size]} />
-      </button>
+        <FiArrowDown className={currentSize.icon} />
+      </motion.button>
     </div>
   );
 }

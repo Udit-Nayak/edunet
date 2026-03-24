@@ -32,8 +32,6 @@ async function batchGenerateUserVectors() {
       $or: [
         { "mlProfile.embedding": null },
         { "mlProfile.embedding": { $exists: false } },
-      ],
-      $or: [
         { "userInteractions.viewedPosts": { $not: { $size: 0 } } },
         { "userInteractions.upvotedPosts": { $not: { $size: 0 } } },
         { savedPosts: { $not: { $size: 0 } } },

@@ -1,20 +1,26 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useParams } from 'react-router-dom';
 import { authAPI, postAPI } from '../services/api';
-import Navbar from '../components/common/Navbar';
+import { useAuth } from '../hooks/useAuth';
+import PageShell from '../components/common/PageShell';
 import PostCard from '../components/post/PostCard';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import ErrorMessage from '../components/common/ErrorMessage';
-import { FiCalendar, FiAward, FiTrendingUp, FiMapPin, FiGlobe, FiGithub, FiLinkedin, FiTwitter, FiExternalLink } from 'react-icons/fi';
-import { formatDate } from '../utils/formatters';
+import { FiCalendar, FiAward, FiTrendingUp, FiMapPin, FiGlobe, FiGithub, FiLinkedin, FiTwitter, FiExternalLink, FiEdit2 } from 'react-icons/fi';
+import { format } from 'date-fns';
+import { Avatar } from '../components/ui/Avatar';
+import * as Tabs from '@radix-ui/react-tabs';
 
 export default function UserProfile() {
   const { userId } = useParams();
+  const { user: currentUser } = useAuth();
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeTab, setActiveTab] = useState('all');
+  const isOwnProfile = currentUser?._id === userId;
 
   useEffect(() => {
     fetchUserData();
@@ -42,8 +48,7 @@ export default function UserProfile() {
       const postsResponse = await postAPI.getUserPosts(userId, params);
       setPosts(postsResponse.data.posts);
       setError(null);
-    } catch (err) {
-      console.error('Error fetching user data:', err);
+    } catch {
       setError('Failed to load user profile');
     } finally {
       setLoading(false);
@@ -54,62 +59,89 @@ export default function UserProfile() {
     setPosts(posts.filter(post => post._id !== postId));
   };
 
+  const normalizeExternalUrl = (value) => {
+    if (!value || typeof value !== 'string') return '#';
+
+    const trimmed = value.trim();
+    if (!trimmed) return '#';
+
+    if (/^https?:\/\//i.test(trimmed)) {
+      return trimmed;
+    }
+
+    return `https://${trimmed}`;
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="max-w-7xl mx-auto px-4 py-12">
+      <PageShell showRightSidebar={false}>
+        <div className="w-full max-w-4xl mx-auto py-20 flex justify-center">
           <LoadingSpinner size="lg" text="Loading profile..." />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   if (error || !user) {
     return (
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <div className="max-w-7xl mx-auto px-4 py-12">
+      <PageShell showRightSidebar={false}>
+        <div className="w-full max-w-4xl mx-auto py-20">
           <ErrorMessage message={error || 'User not found'} />
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <Navbar />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <PageShell showRightSidebar={false}>
+      <div className="w-full max-w-4xl mx-auto pb-12">
         {/* Profile Header */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="flex flex-col md:flex-row md:items-start space-y-4 md:space-y-0 md:space-x-6">
-            {/* Avatar */}
-            <img
-              src={user.avatar}
-              alt={user.username}
-              className="w-24 h-24 rounded-full"
-            />
+        <div className="bg-bg-secondary rounded-xl shadow-card border border-border overflow-hidden mb-8">
+          <div className="px-6 sm:px-8 pt-6 pb-8 relative">
+            <div className="flex flex-col md:flex-row md:items-end justify-between mb-4 md:mb-6 gap-4">
+              <div className="p-1 bg-bg-secondary rounded-full inline-block">
+                <Avatar
+                  src={user.avatar}
+                  alt={user.username}
+                  size="xxl"
+                  fallback={user.username.charAt(0)}
+                  className="border-4 border-bg-secondary"
+                />
+              </div>
+
+              {isOwnProfile && (
+                <Link
+                  to="/edit-profile"
+                  className="inline-flex items-center justify-center px-4 py-2 rounded-lg bg-bg-primary border border-border text-text-primary font-semibold text-sm hover:bg-surface-hover transition-colors"
+                >
+                  <FiEdit2 className="w-4 h-4 mr-2" />
+                  Edit Profile
+                </Link>
+              )}
+            </div>
 
             {/* User Info */}
-            <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
-                <h1 className="text-3xl font-bold text-gray-900">{user.username}</h1>
+            <div className="space-y-4">
+              <div>
+                <h1 className="text-3xl font-bold text-text-primary">{user.username}</h1>
+                <p className="text-[13px] font-bold text-text-tertiary uppercase tracking-wider mt-1">
+                  Joined {format(new Date(user.createdAt), 'MMMM yyyy')}
+                </p>
               </div>
 
               {user.headline && (
-                <p className="text-lg text-gray-700 mb-2 font-medium">{user.headline}</p>
+                <p className="text-[17px] text-text-primary font-medium">{user.headline}</p>
               )}
 
               {user.bio && (
-                <p className="text-gray-600 mb-4">{user.bio}</p>
+                <p className="text-[15px] text-text-secondary leading-relaxed max-w-3xl">{user.bio}</p>
               )}
 
               {/* Location and Website */}
-              <div className="flex flex-wrap gap-4 mb-4">
+              <div className="flex flex-wrap gap-4 pt-2">
                 {(user.location?.city || user.location?.state || user.location?.country) && (
-                  <div className="flex items-center text-sm text-gray-600">
-                    <FiMapPin className="w-4 h-4 mr-1" />
+                  <div className="flex items-center text-[13px] font-medium text-text-secondary bg-bg-primary border border-border px-3 py-1.5 rounded-lg">
+                    <FiMapPin className="w-4 h-4 mr-1.5 opacity-70" />
                     <span>
                       {[user.location.city, user.location.state, user.location.country]
                         .filter(Boolean)
@@ -119,12 +151,12 @@ export default function UserProfile() {
                 )}
                 {user.website && (
                   <a
-                    href={user.website}
+                    href={normalizeExternalUrl(user.website)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center text-sm text-primary-600 hover:text-primary-700"
+                    className="flex items-center text-[13px] font-bold text-primary bg-primary/10 hover:bg-primary/20 transition-colors border border-primary/20 px-3 py-1.5 rounded-lg"
                   >
-                    <FiGlobe className="w-4 h-4 mr-1" />
+                    <FiGlobe className="w-4 h-4 mr-1.5" />
                     <span>Website</span>
                   </a>
                 )}
@@ -132,87 +164,80 @@ export default function UserProfile() {
 
               {/* Social Links */}
               {(user.socialLinks?.linkedin || user.socialLinks?.github || user.socialLinks?.twitter || user.socialLinks?.portfolio) && (
-                <div className="flex gap-3 mb-4">
+                <div className="flex gap-3 pt-2">
                   {user.socialLinks.linkedin && (
                     <a
-                      href={user.socialLinks.linkedin}
+                      href={normalizeExternalUrl(user.socialLinks.linkedin)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gray-600 hover:text-primary-600 transition-colors"
+                      className="w-9 h-9 flex items-center justify-center rounded-full bg-bg-primary border border-border text-text-secondary hover:text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-all"
                       title="LinkedIn"
                     >
-                      <FiLinkedin className="w-5 h-5" />
+                      <FiLinkedin className="w-4 h-4" />
                     </a>
                   )}
                   {user.socialLinks.github && (
                     <a
-                      href={user.socialLinks.github}
+                      href={normalizeExternalUrl(user.socialLinks.github)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gray-600 hover:text-gray-900 transition-colors"
+                      className="w-9 h-9 flex items-center justify-center rounded-full bg-bg-primary border border-border text-text-secondary hover:text-gray-900 hover:border-gray-300 hover:bg-gray-100 transition-all"
                       title="GitHub"
                     >
-                      <FiGithub className="w-5 h-5" />
+                      <FiGithub className="w-4 h-4" />
                     </a>
                   )}
                   {user.socialLinks.twitter && (
                     <a
-                      href={user.socialLinks.twitter}
+                      href={normalizeExternalUrl(user.socialLinks.twitter)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gray-600 hover:text-blue-500 transition-colors"
+                      className="w-9 h-9 flex items-center justify-center rounded-full bg-bg-primary border border-border text-text-secondary hover:text-blue-400 hover:border-blue-200 hover:bg-blue-50 transition-all"
                       title="Twitter"
                     >
-                      <FiTwitter className="w-5 h-5" />
+                      <FiTwitter className="w-4 h-4" />
                     </a>
                   )}
                   {user.socialLinks.portfolio && (
                     <a
-                      href={user.socialLinks.portfolio}
+                      href={normalizeExternalUrl(user.socialLinks.portfolio)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-gray-600 hover:text-primary-600 transition-colors"
+                      className="w-9 h-9 flex items-center justify-center rounded-full bg-bg-primary border border-border text-text-secondary hover:text-primary hover:border-primary/30 hover:bg-primary/10 transition-all"
                       title="Portfolio"
                     >
-                      <FiExternalLink className="w-5 h-5" />
+                      <FiExternalLink className="w-4 h-4" />
                     </a>
                   )}
                 </div>
               )}
 
               {/* Details Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border mt-6">
                 {user.college && (
-                  <div className="text-sm">
-                    <span className="font-medium text-gray-700">College:</span>{' '}
-                    <span className="text-gray-600">{user.college}</span>
+                  <div className="flex flex-col bg-bg-primary border border-border rounded-xl p-4">
+                    <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1">Institution</span>
+                    <span className="text-[15px] font-bold text-text-primary">{user.college}</span>
                   </div>
                 )}
                 
                 {user.yearOfStudy && (
-                  <div className="text-sm">
-                    <span className="font-medium text-gray-700">Year:</span>{' '}
-                    <span className="text-gray-600">{user.yearOfStudy}</span>
+                  <div className="flex flex-col bg-bg-primary border border-border rounded-xl p-4">
+                    <span className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-1">Academic Year</span>
+                    <span className="text-[15px] font-bold text-text-primary">{user.yearOfStudy}</span>
                   </div>
                 )}
-
-                <div className="text-sm flex items-center space-x-2">
-                  <FiCalendar className="w-4 h-4 text-gray-500" />
-                  <span className="text-gray-600">
-                    Joined {formatDate(user.createdAt)}
-                  </span>
-                </div>
               </div>
 
               {/* Interests */}
               {user.interests && user.interests.length > 0 && (
-                <div className="mb-4">
-                  <span className="text-sm font-medium text-gray-700">Interests:</span>
-                  <div className="flex flex-wrap gap-2 mt-2">
+                <div className="pt-4">
+                  <span className="block text-[11px] font-bold text-text-secondary uppercase tracking-wider mb-3">Interests</span>
+                  <div className="flex flex-wrap gap-2">
                     {user.interests.map((interest, index) => (
                       <span
                         key={index}
-                        className="px-3 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
+                        className="px-3 py-1.5 bg-primary/10 text-primary border border-primary/20 rounded-lg text-[13px] font-bold"
                       >
                         {interest}
                       </span>
@@ -221,264 +246,280 @@ export default function UserProfile() {
                 </div>
               )}
 
-              {/* Stats */}
-              <div className="flex flex-wrap gap-6 pt-4 border-t border-gray-200">
-                <div className="flex items-center space-x-2">
-                  <FiAward className="w-5 h-5 text-primary-600" />
-                  <div>
-                    <p className="text-xl font-bold text-primary-600">
-                      {user.reputation || 0}
-                    </p>
-                    <p className="text-xs text-gray-600">Reputation</p>
-                  </div>
+              {/* Stats Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-6 border-t border-border mt-6">
+                <div className="flex flex-col items-center justify-center p-4 bg-bg-primary rounded-xl border border-border">
+                  <FiAward className="w-6 h-6 text-accent-orange mb-2" />
+                  <p className="text-2xl font-bold font-mono text-text-primary">
+                    {user.reputation || 0}
+                  </p>
+                  <p className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mt-1">Reputation</p>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <FiTrendingUp className="w-5 h-5 text-green-600" />
-                  <div>
-                    <p className="text-xl font-bold text-gray-900">
-                      {user.currentStreak || 0}
-                    </p>
-                    <p className="text-xs text-gray-600">Day Streak</p>
-                  </div>
+                <div className="flex flex-col items-center justify-center p-4 bg-bg-primary rounded-xl border border-border">
+                  <FiTrendingUp className="w-6 h-6 text-accent-green mb-2" />
+                  <p className="text-2xl font-bold font-mono text-text-primary">
+                    {user.currentStreak || 0}
+                  </p>
+                  <p className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mt-1">Day Streak</p>
                 </div>
 
-                <div>
-                  <p className="text-xl font-bold text-gray-900">
+                <div className="flex flex-col items-center justify-center p-4 bg-bg-primary rounded-xl border border-border">
+                  <p className="text-2xl font-bold font-mono text-text-primary">
                     {user.followersCount || 0}
                   </p>
-                  <p className="text-xs text-gray-600">Followers</p>
+                  <p className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mt-1">Followers</p>
                 </div>
 
-                <div>
-                  <p className="text-xl font-bold text-gray-900">
+                <div className="flex flex-col items-center justify-center p-4 bg-bg-primary rounded-xl border border-border">
+                  <p className="text-2xl font-bold font-mono text-text-primary">
                     {user.followingCount || 0}
                   </p>
-                  <p className="text-xs text-gray-600">Following</p>
+                  <p className="text-[11px] font-bold text-text-secondary uppercase tracking-wider mt-1">Following</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Education Section */}
-        {user.education && user.education.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Education</h2>
-            <div className="space-y-4">
-              {user.education.map((edu, index) => (
-                <div key={index} className="border-l-2 border-primary-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">
-                    {edu.degree} {edu.fieldOfStudy && `in ${edu.fieldOfStudy}`}
-                  </h3>
-                  <p className="text-gray-700">{edu.institution}</p>
-                  <p className="text-sm text-gray-500">
-                    {edu.startDate} - {edu.currentlyStudying ? 'Present' : edu.endDate || 'N/A'}
-                  </p>
-                  {edu.grade && <p className="text-sm text-gray-600">Grade: {edu.grade}</p>}
-                  {edu.description && <p className="text-sm text-gray-600 mt-2">{edu.description}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Experience Section */}
-        {user.experience && user.experience.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Experience</h2>
-            <div className="space-y-4">
-              {user.experience.map((exp, index) => (
-                <div key={index} className="border-l-2 border-green-500 pl-4">
-                  <h3 className="font-semibold text-gray-900">{exp.title}</h3>
-                  <p className="text-gray-700">{exp.company}</p>
-                  {exp.location && <p className="text-sm text-gray-600">{exp.location}</p>}
-                  <p className="text-sm text-gray-500">
-                    {exp.startDate} - {exp.currentlyWorking ? 'Present' : exp.endDate || 'N/A'}
-                    {exp.employmentType && ` • ${exp.employmentType}`}
-                  </p>
-                  {exp.description && <p className="text-sm text-gray-600 mt-2">{exp.description}</p>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Projects Section */}
-        {user.projects && user.projects.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Projects</h2>
-            <div className="space-y-4">
-              {user.projects.map((project, index) => (
-                <div key={index} className="border border-gray-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-gray-900">{project.title}</h3>
-                  <p className="text-sm text-gray-600 mt-1">{project.description}</p>
-                  {project.technologies && project.technologies.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-2">
-                      {project.technologies.map((tech, i) => (
-                        <span key={i} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                          {tech}
-                        </span>
-                      ))}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Details */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Education Section */}
+            {user.education && user.education.length > 0 && (
+              <div className="bg-bg-secondary rounded-xl shadow-card border border-border p-6">
+                <h2 className="text-[16px] font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-primary" />
+                  Education
+                </h2>
+                <div className="space-y-6">
+                  {user.education.map((edu, index) => (
+                    <div key={index} className="relative pl-4 border-l-2 border-border pb-1">
+                      <div className="absolute w-2.5 h-2.5 rounded-full bg-border -left-[5px] top-1.5" />
+                      <h3 className="font-bold text-[14px] text-text-primary leading-tight">
+                        {edu.degree} {edu.fieldOfStudy && <span className="text-primary font-medium">in {edu.fieldOfStudy}</span>}
+                      </h3>
+                      <p className="text-[13px] font-medium text-text-secondary mt-1">{edu.institution}</p>
+                      <p className="text-[11px] font-bold text-text-tertiary uppercase tracking-wider mt-2">
+                        {edu.startDate} - {edu.currentlyStudying ? 'Present' : edu.endDate || 'N/A'}
+                      </p>
+                      {edu.grade && <p className="text-[13px] text-text-secondary mt-1">Grade: <span className="font-bold text-text-primary">{edu.grade}</span></p>}
+                      {edu.description && <p className="text-[13px] text-text-secondary mt-2 leading-relaxed">{edu.description}</p>}
                     </div>
-                  )}
-                  <div className="flex gap-3 mt-2 text-sm">
-                    {project.projectUrl && (
-                      <a
-                        href={project.projectUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary-600 hover:text-primary-700"
-                      >
-                        View Project
-                      </a>
-                    )}
-                    {project.githubUrl && (
-                      <a
-                        href={project.githubUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary-600 hover:text-primary-700"
-                      >
-                        GitHub
-                      </a>
-                    )}
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
 
-        {/* Skills Section */}
-        {user.skills && user.skills.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Skills</h2>
-            <div className="flex flex-wrap gap-2">
-              {user.skills.map((skill, index) => (
-                <span
-                  key={index}
-                  className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                >
-                  {skill.name} {skill.level && `• ${skill.level}`}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
+            {/* Experience Section */}
+            {user.experience && user.experience.length > 0 && (
+              <div className="bg-bg-secondary rounded-xl shadow-card border border-border p-6">
+                <h2 className="text-[16px] font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-accent-green" />
+                  Experience
+                </h2>
+                <div className="space-y-6">
+                  {user.experience.map((exp, index) => (
+                    <div key={index} className="relative pl-4 border-l-2 border-border pb-1">
+                      <div className="absolute w-2.5 h-2.5 rounded-full bg-border -left-[5px] top-1.5" />
+                      <h3 className="font-bold text-[14px] text-text-primary">{exp.title}</h3>
+                      <p className="text-[13px] font-medium text-text-secondary mt-1">{exp.company}</p>
+                      {exp.location && <p className="text-[12px] text-text-tertiary mt-1">{exp.location}</p>}
+                      <p className="text-[11px] font-bold text-text-tertiary uppercase tracking-wider mt-2">
+                        {exp.startDate} - {exp.currentlyWorking ? 'Present' : exp.endDate || 'N/A'}
+                        {exp.employmentType && ` • ${exp.employmentType}`}
+                      </p>
+                      {exp.description && <p className="text-[13px] text-text-secondary mt-2 leading-relaxed">{exp.description}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {/* Certifications Section */}
-        {user.certifications && user.certifications.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Certifications</h2>
-            <div className="space-y-3">
-              {user.certifications.map((cert, index) => (
-                <div key={index} className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{cert.name}</h3>
-                    <p className="text-sm text-gray-600">{cert.issuingOrganization}</p>
-                    <p className="text-xs text-gray-500">
-                      Issued {cert.issueDate}
-                      {cert.expirationDate && ` • Expires ${cert.expirationDate}`}
-                    </p>
-                  </div>
-                  {cert.credentialUrl && (
-                    <a
-                      href={cert.credentialUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary-600 hover:text-primary-700 text-sm"
+            {/* Skills Section */}
+            {user.skills && user.skills.length > 0 && (
+              <div className="bg-bg-secondary rounded-xl shadow-card border border-border p-6">
+                <h2 className="text-[16px] font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-accent-blue" />
+                  Skills
+                </h2>
+                <div className="flex flex-wrap gap-2">
+                  {user.skills.map((skill, index) => (
+                    <span
+                      key={index}
+                      className="px-3 py-1.5 bg-bg-primary border border-border text-text-secondary rounded-lg text-[13px] font-bold"
                     >
-                      View
-                    </a>
-                  )}
+                      {skill.name} {skill.level && <span className="opacity-50 ml-1 font-normal">• {skill.level}</span>}
+                    </span>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
 
-        {/* Languages Section */}
-        {user.languages && user.languages.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Languages</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {user.languages.map((lang, index) => (
-                <div key={index} className="flex justify-between items-center p-3 border border-gray-200 rounded-lg">
-                  <span className="font-medium text-gray-900">{lang.name}</span>
-                  <span className="text-sm text-gray-600">{lang.proficiency}</span>
+            {/* Languages Section */}
+            {user.languages && user.languages.length > 0 && (
+              <div className="bg-bg-secondary rounded-xl shadow-card border border-border p-6">
+                <h2 className="text-[16px] font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-accent-orange" />
+                  Languages
+                </h2>
+                <div className="space-y-2">
+                  {user.languages.map((lang, index) => (
+                    <div key={index} className="flex justify-between items-center p-3 bg-bg-primary border border-border rounded-lg">
+                      <span className="font-bold text-[14px] text-text-primary">{lang.name}</span>
+                      <span className="text-[12px] font-bold text-text-secondary uppercase tracking-wider bg-bg-secondary px-2 py-0.5 rounded-md border border-border">{lang.proficiency}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
+              </div>
+            )}
 
-        {/* Posts Section */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-2xl font-semibold text-gray-900">Posts</h2>
-          </div>
-
-          {/* Filter Tabs */}
-          <div className="flex space-x-2 mb-6 overflow-x-auto">
-            <button
-              onClick={() => setActiveTab('all')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'all'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              All Posts
-            </button>
-            <button
-              onClick={() => setActiveTab('question')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'question'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Questions
-            </button>
-            <button
-              onClick={() => setActiveTab('note')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'note'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Notes
-            </button>
-            <button
-              onClick={() => setActiveTab('article')}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors whitespace-nowrap ${
-                activeTab === 'article'
-                  ? 'bg-primary-600 text-white'
-                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-            >
-              Articles
-            </button>
+            {/* Certifications Section */}
+            {user.certifications && user.certifications.length > 0 && (
+              <div className="bg-bg-secondary rounded-xl shadow-card border border-border p-6">
+                <h2 className="text-[16px] font-bold text-text-primary mb-4 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-accent-purple" />
+                  Certifications
+                </h2>
+                <div className="space-y-4">
+                  {user.certifications.map((cert, index) => (
+                    <div key={index} className="p-4 bg-bg-primary border border-border rounded-lg">
+                      <h3 className="font-bold text-[14px] text-text-primary">{cert.name}</h3>
+                      <p className="text-[13px] text-text-secondary mt-1">{cert.issuingOrganization}</p>
+                      <p className="text-[11px] font-bold text-text-tertiary uppercase tracking-wider mt-2">
+                        Issued {cert.issueDate}
+                        {cert.expirationDate && ` • Expires ${cert.expirationDate}`}
+                      </p>
+                      {cert.credentialUrl && (
+                        <a
+                          href={normalizeExternalUrl(cert.credentialUrl)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-[12px] font-bold text-primary mt-3 hover:underline"
+                        >
+                          View Credential <FiExternalLink className="ml-1 w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Posts List */}
-          {posts.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="text-gray-400 text-6xl mb-4">📝</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">No posts yet</h3>
-              <p className="text-gray-600">This user hasn't posted anything yet.</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {posts.map((post) => (
-                <PostCard key={post._id} post={post} onDelete={handlePostDelete} />
-              ))}
-            </div>
-          )}
+          {/* Right Column - Projects & Contributions */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Projects Section */}
+            {user.projects && user.projects.length > 0 && (
+              <div className="bg-bg-secondary rounded-xl shadow-card border border-border p-6">
+                <h2 className="text-[18px] font-bold text-text-primary mb-4">Projects</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {user.projects.map((project, index) => (
+                    <div key={index} className="flex flex-col border border-border rounded-xl p-5 bg-bg-primary hover:border-primary/50 transition-colors">
+                      <h3 className="font-bold text-[15px] text-text-primary mb-2 line-clamp-1">{project.title}</h3>
+                      <p className="text-[13px] text-text-secondary mb-4 line-clamp-3 flex-1 leading-relaxed">{project.description}</p>
+                      
+                      {project.technologies && project.technologies.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          {project.technologies.slice(0, 4).map((tech, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-bg-secondary border border-border text-text-secondary rounded-md text-[11px] font-bold">
+                              {tech}
+                            </span>
+                          ))}
+                          {project.technologies.length > 4 && (
+                            <span className="px-2 py-0.5 bg-bg-secondary border border-border text-text-secondary rounded-md text-[11px] font-bold">
+                              +{project.technologies.length - 4}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      
+                      <div className="flex gap-3 mt-auto pt-3 border-t border-border">
+                        {project.projectUrl && (
+                          <a
+                            href={normalizeExternalUrl(project.projectUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[12px] font-bold text-primary hover:text-primary-hover flex items-center"
+                          >
+                            <FiGlobe className="mr-1.5" /> Live
+                          </a>
+                        )}
+                        {project.githubUrl && (
+                          <a
+                            href={normalizeExternalUrl(project.githubUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[12px] font-bold text-text-primary hover:text-black flex items-center"
+                          >
+                            <FiGithub className="mr-1.5" /> Repo
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    </div>
+
+        {/* Full-Width Contributions Section */}
+        <div className="mt-6">
+          <div className="bg-bg-secondary rounded-xl shadow-card border border-border">
+            <div className="px-4 sm:px-6 pt-4 sm:pt-6 mb-6">
+              <h2 className="text-[18px] font-bold text-text-primary">Contributions</h2>
+            </div>
+
+            <Tabs.Root value={activeTab} onValueChange={setActiveTab}>
+              <div>
+                <Tabs.List className="flex space-x-2 border-b border-border overflow-x-auto no-scrollbar px-4 sm:px-6" aria-label="Filter posts">
+                    {[
+                      { value: 'all', label: 'All Posts' },
+                      { value: 'question', label: 'Questions' },
+                      { value: 'note', label: 'Notes' },
+                      { value: 'article', label: 'Articles' },
+                    ].map((tab) => (
+                      <Tabs.Trigger
+                        key={tab.value}
+                        value={tab.value}
+                        className={`
+                          px-4 py-3 text-[14px] font-bold outline-none transition-colors border-b-2 whitespace-nowrap
+                          ${activeTab === tab.value 
+                            ? 'border-primary text-primary' 
+                            : 'border-transparent text-text-secondary hover:text-text-primary hover:border-border-hover'
+                          }
+                        `}
+                      >
+                        {tab.label}
+                      </Tabs.Trigger>
+                    ))}
+                  </Tabs.List>
+                </div>
+
+                <div className="px-4 sm:px-6 py-6">
+                  <Tabs.Content value={activeTab} className="outline-none">
+                    {posts.length === 0 ? (
+                      <div className="text-center py-20 bg-bg-primary rounded-xl border border-border border-dashed">
+                        <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mx-auto mb-4 border border-border">
+                          <span className="text-2xl">📝</span>
+                        </div>
+                        <h3 className="text-[16px] font-bold text-text-primary mb-2">No posts found</h3>
+                        <p className="text-[14px] text-text-secondary font-medium">This user hasn't posted anything in this category yet.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {posts.map((post) => (
+                          <PostCard key={post._id} post={post} onDelete={handlePostDelete} />
+                        ))}
+                      </div>
+                    )}
+                  </Tabs.Content>
+                </div>
+              </Tabs.Root>
+            </div>
+          </div>
+        </div>
+    </PageShell>
   );
 }

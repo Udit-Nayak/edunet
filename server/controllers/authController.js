@@ -428,6 +428,79 @@ exports.updateUsername = async (req, res) => {
   }
 };
 
+// @desc    Change user password
+// @route   PUT /api/auth/password
+// @access  Private
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'Current password and new password are required',
+      });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be at least 6 characters long',
+      });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: 'New password must be different from current password',
+      });
+    }
+
+    const user = await User.findById(req.user._id).select('+password');
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (user.authProvider === 'google' || !user.password) {
+      return res.status(400).json({
+        success: false,
+        message: 'This account uses Google Sign-In and does not support password updates',
+      });
+    }
+
+    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+
+    if (!isCurrentPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: 'Current password is incorrect',
+      });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    await cacheService.del(`user:${user._id}`);
+    await cacheService.del(`profile:${user._id}`);
+
+    return res.status(200).json({
+      success: true,
+      message: 'Password updated successfully',
+    });
+  } catch (error) {
+    console.error('Change password error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Error updating password',
+      error: error.message,
+    });
+  }
+};
+
 // @route   GET /api/auth/user/:userId
 exports.getUserById = async (req, res) => {
   try {

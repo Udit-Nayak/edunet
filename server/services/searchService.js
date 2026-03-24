@@ -122,7 +122,7 @@ class SearchService {
     return query;
   }
 
-  buildSortOptions(sort, searchText) {
+  buildSortOptions(sort) {
     switch (sort) {
       case 'relevance':
         // For relevance, prioritize exact matches, then upvotes, then recent

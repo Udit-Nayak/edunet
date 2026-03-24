@@ -191,6 +191,21 @@ python -m uvicorn app.main:app --reload --port 8001
 - `/api/ml/similar-posts`: 100-300 ms
 - `/api/ml/neural-rank`: 100-400 ms (depends on batch size)
 
+## ✅ Lint And Deploy Checks
+
+Use these checks before deployment from the `ml-service` folder:
+
+```bash
+# Install dev tooling
+pip install -r requirements-dev.txt
+
+# Deployment-focused lint checks (syntax + undefined names)
+python -m ruff check .
+
+# Bytecode compile check (catches syntax/import-time parse problems)
+python -m compileall app
+```
+
 ## 🚢 Production Deployment
 
 ### Using Docker (Recommended)

@@ -1,5 +1,4 @@
 const mlService = require('../services/mlService');
-const User = require('../models/User');
 const cacheService = require('../services/cacheService');
 
 /**
@@ -9,7 +8,7 @@ const cacheService = require('../services/cacheService');
  */
 exports.getPersonalizedFeed = async (req, res) => {
   try {
-    const { page = 1, limit = 20 } = req.query;
+    const { limit = 20 } = req.query;
     const userId = req.user._id;
 
     // Check cache first
