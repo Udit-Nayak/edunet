@@ -9,15 +9,13 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first (for better caching)
-# Use full path from repo root since context is set to .
-COPY ml-service/requirements.txt .
+COPY requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
-# Use full path from repo root
-COPY ml-service/app/ ./app/
+COPY app/ ./app/
 
 # Expose port
 EXPOSE 8000
