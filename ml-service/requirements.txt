@@ -5,22 +5,22 @@ pydantic==2.4.2
 pydantic-settings==2.1.0
 python-multipart==0.0.6
 
-# TensorFlow (CPU version for production)
-tensorflow-cpu==2.15.0
-tensorflow-hub==0.16.1
-# tensorflow-text==2.15.0
-tensorflow-estimator==2.15.0
-# Database
-pymongo==4.6.1
-motor==3.3.1  # Async MongoDB driver
-
-# ML & Data
+# ML & Data (lightweight)
 numpy==1.26.3
 scikit-learn==1.4.0
 pandas==2.1.4
 
+# TensorFlow (only if absolutely needed; comment out if not used)
+# tensorflow-cpu==2.15.0
+# For inference only, consider: tensorflow-lite, onnxruntime, or remove entirely
+
+# Database
+pymongo==4.6.1
+motor==3.3.1  # Async MongoDB driver
+
 # Caching
 redis==5.0.1
+
 # Utilities
 python-dotenv==1.0.0
 tqdm==4.66.2
