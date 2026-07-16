@@ -77,7 +77,12 @@ export default function Login() {
         navigate(from, { replace: true });
       }
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Google sign-in failed');
+      const message =
+        error?.code === 'auth/unauthorized-domain'
+          ? 'Firebase OAuth domain is not authorized for this site. Add the deployed domain in Firebase Console > Authentication > Settings > Authorized domains.'
+          : error.response?.data?.message || error.message || 'Google sign-in failed';
+
+      toast.error(message);
     } finally {
       setLoadingState(false);
       dispatch(setLoading(false));

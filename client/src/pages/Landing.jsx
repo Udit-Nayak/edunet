@@ -95,9 +95,7 @@ export default function Landing() {
                   <Button variant="primary" size="lg" onClick={() => navigate('/register')} className="w-full sm:w-auto min-w-[160px] shadow-lg shadow-primary/30">
                     Get Started Free
                   </Button>
-                  <Button variant="secondary" size="lg" onClick={() => navigate('/explore')} className="w-full sm:w-auto min-w-[160px] flex items-center justify-center gap-2 bg-white hover:bg-bg-secondary text-text-primary border-border">
-                    <Compass className="w-5 h-5" /> Explore Demo
-                  </Button>
+                  
                 </>
               )}
             </motion.div>
