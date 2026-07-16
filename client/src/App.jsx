@@ -2,12 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Provider, useDispatch } from 'react-redux';
 import { Toaster } from 'react-hot-toast';
+import { AlertTriangle, WifiOff } from 'lucide-react';
 import { store } from './redux/store';
 import { useAuth } from './hooks/useAuth';
 import { authAPI } from './services/api';
 import { loginSuccess, logout, setLoading } from './redux/slices/authSlice';
 
-// Pages
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -26,19 +26,17 @@ import Tag from './pages/Tag';
 import Settings from './pages/Settings';
 import SavedPosts from './pages/SavedPosts';
 
-// Loading Component
 function LoadingScreen() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+    <div className="flex min-h-screen items-center justify-center bg-bg-secondary">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-600 mx-auto mb-4"></div>
-        <p className="text-gray-600 text-lg">Loading...</p>
+        <div className="mx-auto mb-4 h-14 w-14 animate-spin rounded-full border-4 border-border border-t-primary"></div>
+        <p className="text-lg font-medium text-text-secondary">Loading...</p>
       </div>
     </div>
   );
 }
 
-// Error Boundary Component
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -56,17 +54,19 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-50">
-          <div className="text-center max-w-md p-8 bg-white rounded-lg shadow-lg">
-            <div className="text-red-500 text-6xl mb-4">⚠️</div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-4">Oops! Something went wrong</h1>
-            <p className="text-gray-600 mb-4">{this.state.error?.message || 'An unexpected error occurred'}</p>
+        <div className="flex min-h-screen items-center justify-center bg-bg-secondary px-4">
+          <div className="max-w-md rounded-lg border border-border bg-white p-8 text-center shadow-card">
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent-red/10 text-accent-red">
+              <AlertTriangle className="h-7 w-7" />
+            </div>
+            <h1 className="mb-4 text-2xl font-bold text-text-primary">Oops! Something went wrong</h1>
+            <p className="mb-4 text-text-secondary">{this.state.error?.message || 'An unexpected error occurred'}</p>
             <button
               onClick={() => {
                 localStorage.clear();
                 window.location.href = '/';
               }}
-              className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+              className="rounded-lg bg-primary px-6 py-3 font-semibold text-white transition-colors hover:bg-primary-hover"
             >
               Clear Cache & Restart
             </button>
@@ -79,7 +79,6 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Protected Route Component
 function ProtectedRoute({ children, skipProfileCheck = false }) {
   const { isAuthenticated, loading, needsProfileSetup } = useAuth();
   const location = useLocation();
@@ -89,7 +88,6 @@ function ProtectedRoute({ children, skipProfileCheck = false }) {
   }
 
   if (!isAuthenticated) {
-    // Save the current location so we can redirect back after login
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -100,7 +98,6 @@ function ProtectedRoute({ children, skipProfileCheck = false }) {
   return children;
 }
 
-// Public Route Component
 function PublicRoute({ children }) {
   const { isAuthenticated, loading, needsProfileSetup } = useAuth();
   const location = useLocation();
@@ -114,7 +111,6 @@ function PublicRoute({ children }) {
   }
 
   if (isAuthenticated) {
-    // Redirect to the page they were trying to access, or /feed if none
     const from = location.state?.from?.pathname || '/feed';
     return <Navigate to={from} replace />;
   }
@@ -126,34 +122,28 @@ function AppContent() {
   const dispatch = useDispatch();
   const [initError, setInitError] = useState(null);
 
-  // Check authentication on mount
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('token');
-      
+
       if (token) {
         try {
           dispatch(setLoading(true));
-          
+
           const response = await authAPI.getMe();
-          
           const user = response.data.user;
           const needsSetup = !user.bio && !user.college && user.interests.length === 0;
-          
+
           dispatch(loginSuccess({
-            user: user,
-            token: token,
+            user,
+            token,
             needsProfileSetup: needsSetup,
           }));
         } catch (error) {
-          // Clear invalid token
           localStorage.removeItem('token');
           dispatch(logout());
-          
-          // Show user-friendly error
-          if (error.response?.status === 401) {
-            // Session expired - redirect to login
-          } else if (!error.response) {
+
+          if (!error.response) {
             setInitError('Cannot connect to server. Please make sure the backend is running on http://localhost:5000');
           }
         } finally {
@@ -167,18 +157,19 @@ function AppContent() {
     checkAuth();
   }, [dispatch]);
 
-  // Show initialization error
   if (initError) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center max-w-md p-8 bg-white rounded-lg shadow-lg border-2 border-red-200">
-          <div className="text-red-500 text-6xl mb-4">🔌</div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Connection Error</h1>
-          <p className="text-gray-600 mb-6">{initError}</p>
+      <div className="flex min-h-screen items-center justify-center bg-bg-secondary px-4">
+        <div className="max-w-md rounded-lg border border-accent-red/20 bg-white p-8 text-center shadow-card">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-accent-red/10 text-accent-red">
+            <WifiOff className="h-7 w-7" />
+          </div>
+          <h1 className="mb-4 text-2xl font-bold text-text-primary">Connection Error</h1>
+          <p className="mb-6 text-text-secondary">{initError}</p>
           <div className="space-y-3">
             <button
               onClick={() => window.location.reload()}
-              className="w-full px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700"
+              className="w-full rounded-lg bg-primary px-6 py-3 font-semibold text-white transition-colors hover:bg-primary-hover"
             >
               Try Again
             </button>
@@ -187,7 +178,7 @@ function AppContent() {
                 setInitError(null);
                 dispatch(setLoading(false));
               }}
-              className="w-full px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+              className="w-full rounded-lg border border-border bg-bg-secondary px-6 py-3 font-semibold text-text-secondary transition-colors hover:bg-border-light hover:text-text-primary"
             >
               Continue Anyway
             </button>
@@ -200,22 +191,19 @@ function AppContent() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><Register /></PublicRoute>} />
 
-        {/* Profile Setup - Special route that skips profile check */}
-        <Route 
-          path="/profile-setup" 
+        <Route
+          path="/profile-setup"
           element={
-            <ProtectedRoute skipProfileCheck={true}>
+            <ProtectedRoute skipProfileCheck>
               <ProfileSetup />
             </ProtectedRoute>
-          } 
+          }
         />
 
-        {/* Protected Routes */}
         <Route path="/feed" element={<ProtectedRoute><Feed /></ProtectedRoute>} />
         <Route path="/personalized" element={<ProtectedRoute><PersonalizedFeed /></ProtectedRoute>} />
         <Route path="/create-post" element={<ProtectedRoute><CreatePost /></ProtectedRoute>} />
@@ -223,7 +211,7 @@ function AppContent() {
         <Route path="/post/:id" element={<ProtectedRoute><PostDetail /></ProtectedRoute>} />
         <Route path="/user/:userId" element={<ProtectedRoute><UserProfile /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path="/edit-profile" element={<ProtectedRoute skipProfileCheck={true}><EditProfile /></ProtectedRoute>} />
+        <Route path="/edit-profile" element={<ProtectedRoute skipProfileCheck><EditProfile /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         <Route path="/search" element={<ProtectedRoute><Search /></ProtectedRoute>} />
         <Route path="/subjects" element={<ProtectedRoute><Navigate to="/search" replace /></ProtectedRoute>} />
@@ -231,7 +219,6 @@ function AppContent() {
         <Route path="/tag/:tag" element={<ProtectedRoute><Tag /></ProtectedRoute>} />
         <Route path="/saved" element={<ProtectedRoute><SavedPosts /></ProtectedRoute>} />
 
-        {/* 404 */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
@@ -243,7 +230,7 @@ function App() {
     <ErrorBoundary>
       <Provider store={store}>
         <AppContent />
-        <Toaster 
+        <Toaster
           position="top-right"
           toastOptions={{
             duration: 3000,

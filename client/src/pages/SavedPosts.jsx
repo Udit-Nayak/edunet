@@ -40,14 +40,14 @@ export default function SavedPosts() {
     <PageShell>
       <div className="flex flex-col gap-4 pb-12">
         {/* Header */}
-        <div className="bg-white rounded-xl shadow-card border border-border p-6">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Bookmark className="w-5 h-5 text-primary" />
+        <div className="rounded-lg border border-border bg-white p-5 shadow-card">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <Bookmark className="h-5 w-5 text-primary" />
             </div>
             <div>
               <h1 className="text-2xl font-bold text-text-primary">Saved Posts</h1>
-              <p className="text-sm text-text-secondary mt-1">
+              <p className="mt-1 text-sm text-text-secondary">
                 {posts.length} {posts.length === 1 ? 'post' : 'posts'} saved for later
               </p>
             </div>
@@ -66,9 +66,9 @@ export default function SavedPosts() {
               onRetry={fetchSavedPosts}
             />
           ) : posts.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-border text-center py-16 px-4">
-              <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                <Bookmark className="w-8 h-8 text-text-tertiary" />
+            <div className="rounded-lg border border-border bg-white px-4 py-16 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-bg-secondary">
+                <Bookmark className="h-8 w-8 text-text-tertiary" />
               </div>
               <h3 className="text-lg font-bold text-text-primary mb-1">No saved posts yet</h3>
               <p className="text-text-secondary mb-6 max-w-sm mx-auto">

@@ -9,7 +9,7 @@ export default function PageShell({ children, showLeftSidebar = true, showRightS
     <div className="min-h-screen bg-bg-secondary w-full select-auto">
       <Navbar />
       
-      <div className="w-full flex gap-4 px-4 pt-4 pb-20 md:pb-8">
+      <div className="mx-auto flex w-full max-w-[1440px] gap-4 px-3 pt-4 pb-20 sm:px-4 md:pb-8">
         {showLeftSidebar && <LeftSidebar />}
         
         <main className="flex-1 min-w-0">

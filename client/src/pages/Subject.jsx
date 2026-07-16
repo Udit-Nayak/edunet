@@ -108,25 +108,25 @@ export default function Subject() {
     <PageShell>
       <div className="flex flex-col gap-4 pb-12">
         {/* Subject Header */}
-        <div className="bg-white rounded-xl shadow-card border border-border p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-border bg-white p-5 shadow-card md:flex-row md:items-center">
           <div className="flex items-center gap-4">
-            <div className={`w-16 h-16 rounded-2xl ${subjectMetadata.bg} flex items-center justify-center ${subjectMetadata.text} shrink-0`}>
-              <FiBook className="w-8 h-8" />
+            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-lg ${subjectMetadata.bg} ${subjectMetadata.text}`}>
+              <FiBook className="h-7 w-7" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-text-primary mb-1 capitalize">{subjectMetadata.label}</h1>
+              <h1 className="mb-1 text-2xl font-bold capitalize text-text-primary">{subjectMetadata.label}</h1>
               <p className="text-sm text-text-secondary">
                 Explore notes, questions, and articles across {subjectMetadata.label}
               </p>
             </div>
           </div>
-          <Button variant="primary" onClick={() => navigate('/create-post')}>
+          <Button variant="primary" onClick={() => navigate('/create-post')} className="w-full md:w-auto">
             Post in {subjectMetadata.label}
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-card border border-border p-2">
+        <div className="rounded-lg border border-border bg-white p-2 shadow-card">
           <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
             <FilterButton active={sortBy === 'recent'} onClick={() => setSortBy('recent')} icon={<FiClock />} label="Recent" />
             <FilterButton active={sortBy === 'popular'} onClick={() => setSortBy('popular')} icon={<FiStar />} label="Popular" />
@@ -143,9 +143,9 @@ export default function Subject() {
           ) : error ? (
             <ErrorMessage message={error} onRetry={() => fetchPosts(1, false)} />
           ) : posts.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-border text-center py-16 px-4">
-              <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiBook className="w-8 h-8 text-text-tertiary" />
+            <div className="rounded-lg border border-border bg-white px-4 py-16 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-bg-secondary">
+                <FiBook className="h-8 w-8 text-text-tertiary" />
               </div>
               <h3 className="text-lg font-bold text-text-primary mb-1">No posts found</h3>
               <p className="text-text-secondary mb-6 max-w-sm mx-auto">

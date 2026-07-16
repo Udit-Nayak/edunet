@@ -95,25 +95,25 @@ export default function Tag() {
     <PageShell>
       <div className="flex flex-col gap-4 pb-12">
         {/* Tag Header */}
-        <div className="bg-white rounded-xl shadow-card border border-border p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-border bg-white p-5 shadow-card md:flex-row md:items-center">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
-              <FiHash className="w-8 h-8" />
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <FiHash className="h-7 w-7" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-text-primary mb-1 capitalize">{tag}</h1>
+              <h1 className="mb-1 text-2xl font-bold capitalize text-text-primary">{tag}</h1>
               <p className="text-sm text-text-secondary">
                 Browsing posts tagged with #{tag}
               </p>
             </div>
           </div>
-          <Button variant="primary" onClick={() => navigate('/create-post')}>
+          <Button variant="primary" onClick={() => navigate('/create-post')} className="w-full md:w-auto">
             Create Post in #{tag}
           </Button>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-xl shadow-card border border-border p-2">
+        <div className="rounded-lg border border-border bg-white p-2 shadow-card">
           <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
             <FilterButton active={sortBy === 'recent'} onClick={() => setSortBy('recent')} icon={<FiClock />} label="Recent" />
             <FilterButton active={sortBy === 'popular'} onClick={() => setSortBy('popular')} icon={<FiStar />} label="Popular" />
@@ -130,9 +130,9 @@ export default function Tag() {
           ) : error ? (
             <ErrorMessage message={error} onRetry={() => fetchPosts(1, false)} />
           ) : posts.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-border text-center py-16 px-4">
-              <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
-                <FiHash className="w-8 h-8 text-text-tertiary" />
+            <div className="rounded-lg border border-border bg-white px-4 py-16 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-bg-secondary">
+                <FiHash className="h-8 w-8 text-text-tertiary" />
               </div>
               <h3 className="text-lg font-bold text-text-primary mb-1">No posts found</h3>
               <p className="text-text-secondary mb-6 max-w-sm mx-auto">

@@ -6,9 +6,11 @@ import { authAPI } from '../../services/api';
 import { logout as logoutAction } from '../../redux/slices/authSlice';
 import toast from 'react-hot-toast';
 import { 
-  Home, 
-  PlusCircle, 
-  LogOut, 
+  Home,
+  PlusCircle,
+  LogOut,
+  User,
+  Settings,
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -34,9 +36,6 @@ export default function Navbar() {
   };
 
   const isActive = (path) => location.pathname === path;
-
-  // Icon Button Style
-  
 
   const renderNavItem = (path, icon, label) => {
     const active = isActive(path);
@@ -81,63 +80,67 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="h-14 sticky top-0 z-50 bg-bg-primary border-b border-border flex items-center justify-between px-6 shadow-sm">
-      {/* Logo */}
-      <Link to={isAuthenticated ? "/feed" : "/"} className="flex items-center flex-shrink-0">
-        <span className="font-sans font-bold text-accent-orange text-xl tracking-tight">E</span>
-        <span className="font-sans font-bold text-[#1D1D1D] text-xl tracking-tight">dunet</span>
-      </Link>
+    <nav className="sticky top-0 z-50 h-14 border-b border-border bg-bg-primary/95 shadow-sm backdrop-blur">
+      <div className="mx-auto flex h-full w-full max-w-[1440px] items-center justify-between px-4 sm:px-6">
+        {/* Logo */}
+        <Link to={isAuthenticated ? "/feed" : "/"} className="flex flex-shrink-0 items-center rounded-md focus-visible:ring-2 focus-visible:ring-primary/40">
+          <span className="font-sans text-xl font-bold tracking-normal text-accent-orange">E</span>
+          <span className="font-sans text-xl font-bold tracking-normal text-text-primary">dunet</span>
+        </Link>
 
-      {/* Center Nav Items */}
-      {isAuthenticated && (
-        <div className="hidden md:flex items-center h-full gap-6 flex-1 max-w-3xl mx-8">
-          {renderNavItem('/feed', <Home />, 'Feed')}
-          <div className="flex-1 min-w-[280px] max-w-xl">
-            <SearchBar variant="navbar" />
-          </div>
-          {renderNavItem('/create-post', <PlusCircle />, 'Create')}
-        </div>
-      )}
-
-      {/* Right Cluster */}
-      <div className="flex items-center gap-2 h-full">
-        {isAuthenticated ? (
-          <>
-            <NotificationDropdown />
-            
-            <DropdownMenu.Root>
-              <DropdownMenu.Trigger asChild>
-                <button className="rounded-full overflow-hidden hover:opacity-80 transition-opacity ml-2 outline-none" aria-label="User menu">
-                  <Avatar src={user?.avatar} alt="Profile" size="sm" showRing={user?.reputation > 500} />
-                </button>
-              </DropdownMenu.Trigger>
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content className="w-48 bg-white rounded-lg shadow-dropdown border border-border p-1 z-50 mr-4 mt-2" align="end">
-                  <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md outline-none" onClick={() => navigate(`/user/${user?._id || user?.id}`)}>
-                    Profile
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md outline-none" onClick={() => navigate('/settings')}>
-                    Settings
-                  </DropdownMenu.Item>
-                  <DropdownMenu.Separator className="h-px bg-border my-1" />
-                  <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md text-accent-red font-medium outline-none flex items-center gap-2" onSelect={handleLogout}>
-                    <LogOut className="w-4 h-4" />
-                    Logout
-                  </DropdownMenu.Item>
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu.Root>
-          </>
-        ) : (
-          <div className="flex items-center gap-3">
-            <Link to="/login" className="text-sm font-semibold text-text-secondary hover:text-primary transition-colors">
-              Sign In
-            </Link>
-            <Link to="/register" className="bg-primary hover:bg-primary-hover text-white rounded-pill px-5 py-2 text-sm font-semibold transition-all">
-              Join Free
-            </Link>
+        {/* Center Nav Items */}
+        {isAuthenticated && (
+          <div className="hidden h-full flex-1 items-center gap-6 md:mx-8 md:flex md:max-w-3xl">
+            {renderNavItem('/feed', <Home />, 'Feed')}
+            <div className="min-w-[260px] max-w-xl flex-1">
+              <SearchBar variant="navbar" />
+            </div>
+            {renderNavItem('/create-post', <PlusCircle />, 'Create')}
           </div>
         )}
+
+        {/* Right Cluster */}
+        <div className="flex h-full items-center gap-2">
+          {isAuthenticated ? (
+            <>
+              <NotificationDropdown />
+              
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button className="ml-1 rounded-full outline-none transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-primary/40" aria-label="User menu">
+                    <Avatar src={user?.avatar} alt="Profile" size="sm" showRing={user?.reputation > 500} />
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content className="z-50 mr-4 mt-2 w-52 rounded-lg border border-border bg-white p-1 shadow-dropdown" align="end">
+                    <DropdownMenu.Item className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-text-primary outline-none hover:bg-bg-secondary" onClick={() => navigate(`/user/${user?._id || user?.id}`)}>
+                      <User className="h-4 w-4 text-text-secondary" />
+                      Profile
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Item className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm text-text-primary outline-none hover:bg-bg-secondary" onClick={() => navigate('/settings')}>
+                      <Settings className="h-4 w-4 text-text-secondary" />
+                      Settings
+                    </DropdownMenu.Item>
+                    <DropdownMenu.Separator className="my-1 h-px bg-border" />
+                    <DropdownMenu.Item className="flex cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-accent-red outline-none hover:bg-accent-red/10" onSelect={handleLogout}>
+                      <LogOut className="h-4 w-4" />
+                      Logout
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            </>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Link to="/login" className="text-sm font-semibold text-text-secondary transition-colors hover:text-primary">
+                Sign In
+              </Link>
+              <Link to="/register" className="rounded-pill bg-primary px-5 py-2 text-sm font-semibold text-white shadow-sm transition-all hover:bg-primary-hover">
+                Join Free
+              </Link>
+            </div>
+          )}
+        </div>
       </div>
     </nav>
   );

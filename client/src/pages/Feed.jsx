@@ -198,25 +198,25 @@ export default function Feed() {
     <PageShell rightSidebarProps={sidebarData}>
       <div className="flex flex-col gap-4 pb-12">
         {/* Create Post Prompt / Header */}
-        <div className="bg-white rounded-xl shadow-card border border-border p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-border bg-white p-5 shadow-card sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-xl font-bold text-text-primary">Your Feed</h1>
-            <p className="text-sm text-text-secondary mt-0.5">Discover the latest academic discussions</p>
+            <h1 className="text-2xl font-bold text-text-primary">Your Feed</h1>
+            <p className="mt-1 text-sm text-text-secondary">Discover the latest academic discussions</p>
           </div>
-          <Button variant="primary" onClick={() => navigate('/create-post')} className="shrink-0">
+          <Button variant="primary" onClick={() => navigate('/create-post')} className="w-full shrink-0 sm:w-auto">
             Start a post
           </Button>
         </div>
 
         {/* AI Recommendation Banner */}
         {filters.sortBy === "recommended" && (
-          <div className="bg-gradient-to-r from-primary-light/50 to-white border border-primary/20 rounded-xl p-4 flex items-start gap-3 shadow-sm">
-            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+          <div className="flex items-start gap-3 rounded-lg border border-primary/20 bg-gradient-to-r from-primary-light/60 to-white p-4 shadow-sm">
+            <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10">
               <FiZap className="w-4 h-4 text-primary" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-primary">For You</h3>
-              <p className="text-xs text-text-secondary mt-1 max-w-[90%]">
+              <p className="mt-1 max-w-2xl text-xs leading-5 text-text-secondary">
                 Posts personalized based on your tags, engagement, and trending academic topics.
               </p>
             </div>
@@ -224,7 +224,7 @@ export default function Feed() {
         )}
 
         {/* Filters Bar: Radix Tabs for Type + Dropdown for Sort */}
-        <div className="bg-white rounded-xl shadow-card border border-border px-1 py-1 sticky top-[72px] z-20">
+        <div className="sticky top-[72px] z-20 rounded-lg border border-border bg-white px-1 py-1 shadow-card">
           <Tabs.Root 
             value={filters.type} 
             onValueChange={(val) => handleFilterChange("type", val)}
@@ -247,10 +247,10 @@ export default function Feed() {
               ))}
             </Tabs.List>
             
-            <div className="px-2 pb-2 sm:pb-0 sm:pr-2 flex items-center justify-end">
+            <div className="flex items-center justify-end px-2 pb-2 sm:pb-0 sm:pr-2">
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger asChild>
-                  <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold text-text-secondary hover:bg-bg-secondary transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/50 min-w-max">
+                  <button className="flex min-w-max items-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold text-text-secondary outline-none transition-colors hover:bg-bg-secondary focus-visible:ring-2 focus-visible:ring-primary/50">
                     <FiFilter className="w-4 h-4" />
                     <span>{currentSortLabel}</span>
                     <FiChevronDown className="w-4 h-4 opacity-50" />
@@ -261,7 +261,7 @@ export default function Feed() {
                   <DropdownMenu.Content 
                     align="end" 
                     sideOffset={5}
-                    className="z-50 min-w-[180px] bg-white rounded-xl shadow-dropdown border border-border p-1 animate-in fade-in zoom-in-95"
+                    className="z-50 min-w-[180px] rounded-lg border border-border bg-white p-1 shadow-dropdown animate-in fade-in zoom-in-95"
                   >
                     {SORT_OPTIONS.map((option) => (
                       <DropdownMenu.Item
@@ -295,8 +295,8 @@ export default function Feed() {
               onRetry={() => fetchPosts(1, false)}
             />
           ) : posts.length === 0 ? (
-            <div className="bg-white rounded-xl shadow-sm border border-border text-center py-16 px-4">
-              <div className="w-16 h-16 bg-bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
+            <div className="rounded-lg border border-border bg-white px-4 py-16 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-bg-secondary">
                 <FiFilter className="w-8 h-8 text-text-tertiary" />
               </div>
               <h3 className="text-lg font-bold text-text-primary mb-1">No posts found</h3>

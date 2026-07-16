@@ -44,6 +44,23 @@
 }
 body { background: var(--color-bg-secondary); color: var(--color-text-primary); transition: background-color 0.2s ease, color 0.2s ease; }
 
+/* Compatibility utilities for older components that still use palette-step class names. */
+.bg-primary-50 { background-color: #F5FAFF; }
+.bg-primary-100 { background-color: var(--color-primary-light); }
+.bg-primary-200 { background-color: #D8EAF8; }
+.bg-primary-600 { background-color: var(--color-primary); }
+.bg-primary-700 { background-color: var(--color-primary-hover); }
+.text-primary-600 { color: var(--color-primary); }
+.text-primary-700 { color: var(--color-primary-hover); }
+.text-primary-800 { color: #00315F; }
+.border-primary-600 { border-color: var(--color-primary); }
+.hover\:bg-primary-700:hover { background-color: var(--color-primary-hover); }
+.hover\:text-primary-700:hover { color: var(--color-primary-hover); }
+.hover\:text-primary-800:hover { color: #00315F; }
+.hover\:text-primary-600:hover { color: var(--color-primary); }
+.text-accent-blue { color: var(--color-primary); }
+.bg-accent-blue { background-color: var(--color-primary); }
+
 .prose {
   color: #374151;
   max-width: 65ch;
