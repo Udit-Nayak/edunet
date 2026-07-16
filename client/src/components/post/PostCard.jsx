@@ -16,6 +16,7 @@ import { Card } from '../ui/Card';
 import { Avatar } from '../ui/Avatar';
 import { TypeBadge, RepBadge } from '../ui/Badge';
 import { Tag, SubjectBadge } from '../ui/Tag';
+import { getProxiedMediaUrl } from '../../utils/media';
 
 export default function PostCard({ post, onDelete, position = 0, source = 'feed', onUnsave }) {
   const navigate = useNavigate();
@@ -268,7 +269,7 @@ export default function PostCard({ post, onDelete, position = 0, source = 'feed'
                         {attachment.type === "image" ? (
                           <>
                             <img
-                              src={attachment.url}
+                              src={getProxiedMediaUrl(attachment.url)}
                               alt={attachment.name}
                               className="w-full h-24 sm:h-32 object-cover rounded-lg border border-border group-hover:opacity-90 transition-opacity"
                             />

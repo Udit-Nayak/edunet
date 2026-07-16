@@ -215,6 +215,7 @@ export default function Register() {
                   name="password"
                   type="password"
                   required
+                  autoComplete="new-password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="At least 6 characters"
@@ -230,6 +231,7 @@ export default function Register() {
                   name="confirmPassword"
                   type="password"
                   required
+                  autoComplete="new-password"
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   placeholder="Confirm your password"

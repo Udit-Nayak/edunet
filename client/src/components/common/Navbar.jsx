@@ -116,9 +116,6 @@ export default function Navbar() {
                   <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md outline-none" onClick={() => navigate(`/user/${user?._id || user?.id}`)}>
                     Profile
                   </DropdownMenu.Item>
-                  <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md outline-none" onClick={() => navigate('/edit-profile')}>
-                    Edit Profile
-                  </DropdownMenu.Item>
                   <DropdownMenu.Item className="text-sm px-3 py-2 cursor-pointer hover:bg-bg-secondary rounded-md outline-none" onClick={() => navigate('/settings')}>
                     Settings
                   </DropdownMenu.Item>

@@ -1,7 +1,16 @@
 import axios from 'axios';
 
+const isLocalHost =
+  typeof window !== 'undefined' &&
+  ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+const localApiBase = 'http://localhost:5000/api';
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL || localApiBase;
+
 const API = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  baseURL: isLocalHost && configuredApiBase.includes('onrender.com')
+    ? localApiBase
+    : configuredApiBase,
   withCredentials: true,
 });
 

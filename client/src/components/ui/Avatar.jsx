@@ -1,4 +1,5 @@
 import React from 'react';
+import { getProxiedMediaUrl } from '../../utils/media';
 
 export function Avatar({ src, alt = "Avatar", size = 'md', showRing = false, className = '', ...props }) {
   const sizes = {
@@ -12,7 +13,7 @@ export function Avatar({ src, alt = "Avatar", size = 'md', showRing = false, cla
   const sizeClass = sizes[size] || sizes.md;
   const imageElement = (
     <img
-      src={src || "https://ui-avatars.com/api/?name=User&background=F3F2EF&color=1D1D1D"}
+      src={getProxiedMediaUrl(src || "https://ui-avatars.com/api/?name=User&background=F3F2EF&color=1D1D1D")}
       alt={alt}
       className={`${sizeClass} rounded-full object-cover`}
       {...props}

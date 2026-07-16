@@ -10,7 +10,9 @@ const lowlight = createLowlight(common);
 export default function RichTextEditor({ value, onChange }) { // Removed unused placeholder
   const editor = useEditor({
     extensions: [
-      StarterKit,
+      StarterKit.configure({
+        codeBlock: false,
+      }),
       CodeBlockLowlight.configure({
         lowlight,
       }),

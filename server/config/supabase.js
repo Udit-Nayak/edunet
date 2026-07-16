@@ -24,25 +24,8 @@ if (!supabaseUrl || !supabaseServiceKey) {
     }
   });
 
-  const testConnection = async () => {
-    try {
-      const { data, error } = await supabase.storage.listBuckets();
-      if (error) {
-        console.error('❌ Supabase Storage Error:', error);
-      } else {
-        console.log('✅ Supabase Storage Connected');
-        console.log(`📦 Available buckets: ${data.map(b => b.name).join(', ')}`);
-      }
-    } catch (error) {
-      console.error('❌ Supabase connection failed:', {
-        name: error.name,
-        message: error.message,
-        cause: error.cause
-      });
-    }
-  };
-
-  testConnection();
+  console.log('✅ Supabase client initialized');
+  console.log('ℹ️  Storage access will be checked only when upload or file operations run');
 }
 
 module.exports = supabase;

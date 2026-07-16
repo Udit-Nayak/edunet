@@ -18,6 +18,7 @@ import SimilarPosts from "../components/post/SimilarPosts";
 import { useTimeTracking, useLearningTracking } from "../hooks/useInteractionTracking";
 import { Avatar } from "../components/ui/Avatar";
 import { Button } from "../components/ui/Button";
+import { getProxiedMediaUrl } from "../utils/media";
 
 export default function PostDetail() {
   const { id } = useParams();
@@ -206,7 +207,7 @@ export default function PostDetail() {
                         {attachment.type === "image" ? (
                           <div className="w-12 h-12 rounded-lg overflow-hidden shrink-0 border border-border/50">
                             <img
-                              src={attachment.url}
+                              src={getProxiedMediaUrl(attachment.url)}
                               alt={attachment.name}
                               className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                             />

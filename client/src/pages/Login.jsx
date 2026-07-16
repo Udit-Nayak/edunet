@@ -187,6 +187,7 @@ export default function Login() {
                   name="password"
                   type="password"
                   required
+                  autoComplete="current-password"
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"

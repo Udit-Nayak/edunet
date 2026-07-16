@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { FiX, FiChevronLeft, FiChevronRight, FiDownload, FiExternalLink } from 'react-icons/fi';
+import { getProxiedMediaUrl } from '../../utils/media';
 
 export default function MediaViewer({ attachments, initialIndex = 0, onClose }) {
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const currentMedia = attachments[currentIndex];
+  const mediaUrl = getProxiedMediaUrl(currentMedia?.url);
 
     const handlePrevious = () => {
     setCurrentIndex((prev) => (prev > 0 ? prev - 1 : attachments.length - 1));
@@ -20,7 +22,7 @@ export default function MediaViewer({ attachments, initialIndex = 0, onClose }) 
   };
 
   const handleDownload = () => {
-    window.open(currentMedia.url, '_blank');
+    window.open(mediaUrl, '_blank', 'noopener,noreferrer');
   };
 
 
@@ -92,7 +94,7 @@ export default function MediaViewer({ attachments, initialIndex = 0, onClose }) 
       <div className="max-w-7xl max-h-[90vh] w-full px-16">
         {currentMedia.type === 'image' ? (
           <img
-            src={currentMedia.url}
+            src={mediaUrl}
             alt={currentMedia.name}
             className="max-w-full max-h-[90vh] mx-auto object-contain"
           />
@@ -101,7 +103,7 @@ export default function MediaViewer({ attachments, initialIndex = 0, onClose }) 
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-xl font-semibold text-gray-900">{currentMedia.name}</h3>
               <a
-                href={currentMedia.url}
+                href={mediaUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center space-x-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
@@ -111,7 +113,7 @@ export default function MediaViewer({ attachments, initialIndex = 0, onClose }) 
               </a>
             </div>
             <iframe
-              src={currentMedia.url}
+              src={mediaUrl}
               title={currentMedia.name}
               className="w-full h-[70vh] border-0 rounded"
             />
@@ -141,7 +143,7 @@ export default function MediaViewer({ attachments, initialIndex = 0, onClose }) 
                 }`}
               >
                 <img
-                  src={attachment.url}
+                  src={getProxiedMediaUrl(attachment.url)}
                   alt={`Thumbnail ${index + 1}`}
                   className="w-full h-full object-cover"
                 />

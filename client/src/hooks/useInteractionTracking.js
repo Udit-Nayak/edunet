@@ -3,7 +3,14 @@ import axios from 'axios';
 import { learningAPI } from '../services/api';
 import { useAuth } from './useAuth';
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const isLocalHost =
+  typeof window !== 'undefined' &&
+  ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+const configuredApiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE = isLocalHost && configuredApiBase.includes('onrender.com')
+  ? 'http://localhost:5000/api'
+  : configuredApiBase;
 
 /**
  * Hook to track user interactions with posts

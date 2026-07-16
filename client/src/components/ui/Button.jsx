@@ -5,6 +5,7 @@ import React from 'react';
 export function Button({ 
   variant = 'primary', 
   size = 'md', 
+  block = false,
   className = '', 
   children, 
   ...props 
@@ -28,11 +29,12 @@ export function Button({
 
   const variantClass = variants[variant] || variants.primary;
   const sizeClass = variant === 'icon' ? sizes.icon : (sizes[size] || sizes.md);
+  const blockClass = block ? 'w-full' : '';
 
   return (
     <motion.button
       whileTap={{ scale: 0.97 }}
-      className={`${baseStyles} ${variantClass} ${sizeClass} ${className}`}
+      className={`${baseStyles} ${variantClass} ${sizeClass} ${blockClass} ${className}`}
       {...props}
     >
       {children}

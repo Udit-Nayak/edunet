@@ -6,6 +6,7 @@ import { formatTimeAgo } from '../../utils/formatters';
 import { FiEdit, FiTrash2, FiArrowUp, FiCornerDownRight } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import CommentForm from './CommentForm';
+import { Avatar } from '../ui/Avatar';
 
 export default function CommentCard({ comment, onDelete, onRefresh, depth = 0 }) {
   const { user } = useAuth();
@@ -66,10 +67,11 @@ export default function CommentCard({ comment, onDelete, onRefresh, depth = 0 })
     <div className={depth > 0 ? 'pl-4 ml-4 border-l-2 border-border/80' : ''}>
       <div className="group bg-bg-secondary rounded-xl p-3">
         <div className="flex items-start gap-3">
-          <img
-            src={comment.authorId?.avatar || `https://ui-avatars.com/api/?name=${comment.authorId?.username}&background=random`}
+          <Avatar
+            src={comment.authorId?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.authorId?.username || 'User')}&background=random`}
             alt={comment.authorId?.username}
-            className="w-8 h-8 rounded-full shrink-0"
+            size="sm"
+            className="shrink-0"
           />
 
           <div className="flex-1 min-w-0">
